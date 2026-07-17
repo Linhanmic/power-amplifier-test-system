@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>需求管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增需求
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增需求
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -87,10 +92,10 @@
           <el-col :span="12">
             <el-form-item label="优先级" prop="priority">
               <el-select v-model="formData.priority" placeholder="请选择优先级">
-                <el-option label="P0" value="P0" />
-                <el-option label="P1" value="P1" />
-                <el-option label="P2" value="P2" />
-                <el-option label="P3" value="P3" />
+                <el-option label="S" value="S" />
+                <el-option label="A" value="A" />
+                <el-option label="B" value="B" />
+                <el-option label="C" value="C" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -128,6 +133,41 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 详情对话框 -->
+    <el-dialog v-model="detailVisible" title="需求详情" width="800px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="需求编号">{{ detailData.req_code }}</el-descriptions-item>
+        <el-descriptions-item label="优先级">
+          <el-tag :type="getPriorityType(detailData.priority)" size="small">{{ detailData.priority }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="需求标题" :span="2">{{ detailData.title }}</el-descriptions-item>
+        <el-descriptions-item label="分类">{{ detailData.category || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(detailData.status)">{{ getStatusText(detailData.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="创建人">{{ detailData.created_by || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ detailData.created_at }}</el-descriptions-item>
+        <el-descriptions-item label="需求描述" :span="2">
+          {{ detailData.description || '-' }}
+        </el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>车型详情</el-divider>
+      <el-table :data="detailData.vehicle_details || []" border style="width: 100%">
+        <el-table-column prop="vehicle_model_name" label="车型" />
+        <el-table-column prop="feature_support" label="是否支持" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.feature_support ? 'success' : 'info'" size="small">
+              {{ row.feature_support ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="function_status" label="功能状态" width="100" />
+        <el-table-column prop="channel_count" label="通道数" width="80" />
+        <el-table-column prop="power_value" label="功率(W)" width="80" />
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -135,13 +175,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { requirementApi } from '@/api'
+import { exportToExcel, statusMap, priorityMap } from '@/utils/export'
 
 const tableData = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
+const detailVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref(null)
 const editingId = ref(null)
+const detailData = ref({})
 
 const searchParams = reactive({
   page: 1,
@@ -166,7 +209,7 @@ const formRules = {
 }
 
 const getPriorityType = (priority) => {
-  const map = { P0: 'danger', P1: 'warning', P2: 'success', P3: 'info' }
+  const map = { S: 'danger', A: 'warning', B: 'success', C: 'info' }
   return map[priority] || 'info'
 }
 
@@ -222,8 +265,13 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleDetail = (row) => {
-  ElMessage.info('详情功能开发中')
+const handleDetail = async (row) => {
+  try {
+    detailData.value = await requirementApi.getDetail(row.id)
+    detailVisible.value = true
+  } catch (error) {
+    console.error('获取详情失败:', error)
+  }
 }
 
 const handleSubmit = async () => {
@@ -255,6 +303,20 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'req_code', label: '需求编号', width: 15 },
+    { prop: 'title', label: '需求标题', width: 30 },
+    { prop: 'category', label: '分类', width: 15 },
+    { prop: 'priority', label: '优先级', width: 10 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val },
+    { prop: 'created_by', label: '创建人', width: 10 },
+    { prop: 'created_at', label: '创建时间', width: 20 }
+  ]
+  exportToExcel(tableData.value, columns, '需求列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

@@ -50,7 +50,7 @@ class RequirementVehicleDetail(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # 关系
-    vehicle_model = db.relationship('VehicleModel', backref='requirement_details')
+    vehicle_model = db.relationship('VehicleModel', back_populates='requirement_details')
 
     def to_dict(self):
         return {

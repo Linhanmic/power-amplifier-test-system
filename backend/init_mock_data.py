@@ -46,13 +46,13 @@ def init_mock_data():
         # 3. 车辆配置
         vehicle_configs = [
             VehicleConfig(vehicle_model_id=vehicle_models[0].id, config_name='迈腾B9豪华版', config_code='MT-B9-LUX',
-                         speaker_count=8, has_subwoofer=False, has_dsp=True, amplifier_power=400),
+                         software_code='F1A0-V001.01.00', description='迈腾B9豪华版配置，8扬声器，支持蓝牙/USB/FM'),
             VehicleConfig(vehicle_model_id=vehicle_models[0].id, config_name='迈腾B9旗舰版', config_code='MT-B9-FLAG',
-                         speaker_count=12, has_subwoofer=True, has_dsp=True, amplifier_power=600),
+                         software_code='F1A0-V002.00.01', description='迈腾B9旗舰版配置，12扬声器，含低音炮和DSP'),
             VehicleConfig(vehicle_model_id=vehicle_models[2].id, config_name='ID.4 Pro版', config_code='ID4-PRO',
-                         speaker_count=8, has_subwoofer=False, has_dsp=True, amplifier_power=350),
+                         software_code='F1A0-V003.02.00', description='ID.4 Pro版电动车配置，8扬声器'),
             VehicleConfig(vehicle_model_id=vehicle_models[4].id, config_name='A6L豪华型', config_code='A6L-LUX',
-                         speaker_count=16, has_subwoofer=True, has_dsp=True, amplifier_power=750),
+                         software_code='F1A0-V001.03.01', description='奥迪A6L豪华型配置，16扬声器，高端音响系统'),
         ]
         db.session.add_all(vehicle_configs)
         db.session.flush()
@@ -165,15 +165,15 @@ def init_mock_data():
         # 10. 需求
         requirements = [
             Requirement(req_code='REQ-PA-001', title='功放基本功能测试', description='验证功放的基本开关机、音量控制功能',
-                       category='功能测试', priority='P0', status='approved'),
+                       category='功能测试', priority='S', status='approved'),
             Requirement(req_code='REQ-PA-002', title='蓝牙音频播放测试', description='验证蓝牙连接后的音频播放功能',
-                       category='功能测试', priority='P0', status='approved'),
+                       category='功能测试', priority='S', status='approved'),
             Requirement(req_code='REQ-PA-003', title='多音源切换测试', description='验证不同音源之间的切换功能',
-                       category='功能测试', priority='P1', status='approved'),
+                       category='功能测试', priority='A', status='approved'),
             Requirement(req_code='REQ-PA-004', title='扬声器通道测试', description='验证各扬声器通道的音频输出',
-                       category='性能测试', priority='P0', status='reviewing'),
+                       category='性能测试', priority='S', status='reviewing'),
             Requirement(req_code='REQ-PA-005', title='功放故障诊断测试', description='验证功放的故障检测和诊断功能',
-                       category='可靠性测试', priority='P1', status='draft'),
+                       category='可靠性测试', priority='A', status='draft'),
         ]
         db.session.add_all(requirements)
         db.session.flush()
@@ -275,25 +275,25 @@ def init_mock_data():
                     description='验证功放能够正常开机', preconditions='车辆电源OFF',
                     test_steps='1. 打开车辆电源\n2. 等待功放初始化\n3. 检查功放状态',
                     expected_results='功放状态为ON，CAN信号AMP_PowerStatus=1',
-                    level='P0', requirement_id=requirements[0].id, status='ready', script_id=test_scripts[0].id,
+                    level='S', requirement_id=requirements[0].id, status='ready', script_id=test_scripts[0].id,
                     can_matrix_id=can_matrices[0].id),
             TestCase(case_code='TC-PA-002', group_id=sub_groups[0].id, title='功放关机功能测试',
                     description='验证功放能够正常关机', preconditions='车辆电源ON，功放已开机',
                     test_steps='1. 关闭车辆电源\n2. 等待功放关机\n3. 检查功放状态',
                     expected_results='功放状态为OFF，CAN信号AMP_PowerStatus=0',
-                    level='P0', requirement_id=requirements[0].id, status='ready', script_id=test_scripts[0].id,
+                    level='S', requirement_id=requirements[0].id, status='ready', script_id=test_scripts[0].id,
                     can_matrix_id=can_matrices[0].id),
             TestCase(case_code='TC-PA-003', group_id=sub_groups[1].id, title='音量增加测试',
                     description='验证音量能够正常增加', preconditions='功放已开机，音量为0',
                     test_steps='1. 发送音量增加命令\n2. 检查音量变化\n3. 验证CAN信号',
                     expected_results='音量增加，CAN信号AMP_Volume递增',
-                    level='P0', requirement_id=requirements[0].id, status='ready', script_id=test_scripts[1].id,
+                    level='S', requirement_id=requirements[0].id, status='ready', script_id=test_scripts[1].id,
                     can_matrix_id=can_matrices[0].id),
             TestCase(case_code='TC-PA-004', group_id=sub_groups[2].id, title='蓝牙连接音频播放测试',
                     description='验证蓝牙连接后的音频播放功能', preconditions='手机已蓝牙配对',
                     test_steps='1. 建立蓝牙连接\n2. 播放手机音乐\n3. 检查音频输出',
                     expected_results='音频正常播放，CAN信号AUD_SourceSelect=1',
-                    level='P0', requirement_id=requirements[1].id, status='ready', script_id=test_scripts[2].id,
+                    level='A', requirement_id=requirements[1].id, status='ready', script_id=test_scripts[2].id,
                     can_matrix_id=can_matrices[1].id),
         ]
         db.session.add_all(test_cases)

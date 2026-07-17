@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>测试脚本管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增脚本
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增脚本
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -119,6 +124,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { testScriptApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const total = ref(0)
@@ -237,6 +243,20 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'script_code', label: '脚本编号', width: 15 },
+    { prop: 'title', label: '脚本标题', width: 30 },
+    { prop: 'script_path', label: '脚本路径', width: 30 },
+    { prop: 'script_type', label: '类型', width: 10 },
+    { prop: 'gauge_framework', label: 'Gauge框架', width: 10, formatter: (val) => val ? '是' : '否' },
+    { prop: 'version', label: '版本', width: 10 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
+  ]
+  exportToExcel(tableData.value, columns, '测试脚本列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>平台管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增平台
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增平台
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -89,6 +94,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { platformApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const total = ref(0)
@@ -181,6 +187,19 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'id', label: 'ID', width: 10 },
+    { prop: 'name', label: '平台名称', width: 20 },
+    { prop: 'code', label: '平台编码', width: 15 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val },
+    { prop: 'remark', label: '备注', width: 30 },
+    { prop: 'created_at', label: '创建时间', width: 20 }
+  ]
+  exportToExcel(tableData.value, columns, '平台列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

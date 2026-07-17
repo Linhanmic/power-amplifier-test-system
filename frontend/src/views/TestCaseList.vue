@@ -25,9 +25,14 @@
           <template #header>
             <div class="card-header">
               <span>测试用例</span>
-              <el-button type="primary" @click="handleAdd">
-                <el-icon><Plus /></el-icon>新增用例
-              </el-button>
+              <div>
+                <el-button type="success" @click="handleExport">
+                  <el-icon><Download /></el-icon>导出Excel
+                </el-button>
+                <el-button type="primary" @click="handleAdd">
+                  <el-icon><Plus /></el-icon>新增用例
+                </el-button>
+              </div>
             </div>
           </template>
 
@@ -44,9 +49,10 @@
             </el-form-item>
             <el-form-item label="优先级">
               <el-select v-model="searchParams.level" placeholder="全部" clearable>
-                <el-option label="P0" value="P0" />
-                <el-option label="P1" value="P1" />
-                <el-option label="P2" value="P2" />
+                <el-option label="S" value="S" />
+                <el-option label="A" value="A" />
+                <el-option label="B" value="B" />
+                <el-option label="C" value="C" />
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -64,7 +70,14 @@
                 <el-tag :type="getPriorityType(row.level)" size="small">{{ row.level }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="requirement_code" label="关联需求" width="120" />
+            <el-table-column prop="requirement_code" label="关联需求" width="120">
+              <template #default="{ row }">
+                <el-button v-if="row.requirement_id" type="primary" link @click="showRequirementDetail(row.requirement_id)">
+                  {{ row.requirement_code }}
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
@@ -119,9 +132,10 @@
           <el-col :span="12">
             <el-form-item label="优先级">
               <el-select v-model="formData.level" placeholder="请选择优先级">
-                <el-option label="P0" value="P0" />
-                <el-option label="P1" value="P1" />
-                <el-option label="P2" value="P2" />
+                <el-option label="S" value="S" />
+                <el-option label="A" value="A" />
+                <el-option label="B" value="B" />
+                <el-option label="C" value="C" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -144,10 +158,214 @@
         <el-form-item label="预期结果" prop="expected_results">
           <el-input v-model="formData.expected_results" type="textarea" :rows="4" placeholder="请输入预期结果" />
         </el-form-item>
+        <el-form-item label="关联需求">
+          <el-select v-model="formData.requirement_id" placeholder="请选择需求" clearable filterable>
+            <el-option v-for="r in requirements" :key="r.id" :label="`${r.req_code} - ${r.title}`" :value="r.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联脚本">
+          <el-select v-model="formData.script_id" placeholder="请选择脚本" clearable filterable>
+            <el-option v-for="s in scripts" :key="s.id" :label="`${s.script_code} - ${s.title}`" :value="s.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="CAN矩阵">
+          <el-select v-model="formData.can_matrix_id" placeholder="请选择CAN矩阵" clearable>
+            <el-option v-for="m in canMatrices" :key="m.id" :label="m.matrix_name" :value="m.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 详情对话框 -->
+    <el-dialog v-model="detailVisible" title="测试用例详情" width="900px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="用例编号">{{ detailData.case_code }}</el-descriptions-item>
+        <el-descriptions-item label="所属分组">{{ detailData.group_name }}</el-descriptions-item>
+        <el-descriptions-item label="用例标题" :span="2">{{ detailData.title }}</el-descriptions-item>
+        <el-descriptions-item label="优先级">
+          <el-tag :type="getPriorityType(detailData.level)" size="small">{{ detailData.level }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(detailData.status)">{{ getStatusText(detailData.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="前置条件" :span="2">{{ detailData.preconditions || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="测试步骤" :span="2">
+          <pre style="white-space: pre-wrap; margin: 0;">{{ detailData.test_steps }}</pre>
+        </el-descriptions-item>
+        <el-descriptions-item label="预期结果" :span="2">
+          <pre style="white-space: pre-wrap; margin: 0;">{{ detailData.expected_results }}</pre>
+        </el-descriptions-item>
+        <el-descriptions-item label="关联需求">
+          <el-button v-if="detailData.requirement_id" type="primary" link @click="showRequirementDetail(detailData.requirement_id)">
+            {{ detailData.requirement_code }}
+          </el-button>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="关联脚本">
+          <el-button v-if="detailData.script_id" type="primary" link @click="showScriptDetail(detailData.script_id)">
+            {{ detailData.script_code }}
+          </el-button>
+          <span v-else>-</span>
+        </el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>车型关联</el-divider>
+      <el-table :data="detailData.vehicles || []" border style="width: 100%">
+        <el-table-column prop="vehicle_config_name" label="车辆配置" />
+        <el-table-column prop="expected_result" label="预期结果" show-overflow-tooltip />
+        <el-table-column prop="test_status" label="测试状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getTestStatusType(row.test_status)" size="small">
+              {{ getTestStatusText(row.test_status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="executed_at" label="执行时间" width="160" />
+      </el-table>
+    </el-dialog>
+
+    <!-- 分组管理对话框 -->
+    <el-dialog v-model="groupDialogVisible" :title="groupDialogTitle" width="500px">
+      <el-form ref="groupFormRef" :model="groupFormData" :rules="groupFormRules" label-width="100px">
+        <el-form-item label="父分组">
+          <el-tree-select
+            v-model="groupFormData.parent_id"
+            :data="groupTree"
+            :props="{ label: 'label', value: 'id', children: 'children' }"
+            placeholder="无（顶级分组）"
+            clearable
+            check-strictly
+          />
+        </el-form-item>
+        <el-form-item label="分组名称" prop="name">
+          <el-input v-model="groupFormData.name" placeholder="请输入分组名称" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="groupFormData.description" type="textarea" :rows="2" placeholder="请输入描述" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="groupFormData.sort_order" :min="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="groupDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleGroupSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 需求详情弹窗 -->
+    <el-dialog v-model="reqDetailVisible" title="需求详情" width="800px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="需求编号">{{ reqDetailData.req_code }}</el-descriptions-item>
+        <el-descriptions-item label="优先级">
+          <el-tag :type="getPriorityType(reqDetailData.priority)" size="small">{{ reqDetailData.priority }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="需求标题" :span="2">{{ reqDetailData.title }}</el-descriptions-item>
+        <el-descriptions-item label="分类">{{ reqDetailData.category || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(reqDetailData.status)">{{ getStatusText(reqDetailData.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="需求描述" :span="2">{{ reqDetailData.description || '-' }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>车型详情</el-divider>
+      <el-table :data="reqDetailData.vehicle_details || []" border style="width: 100%">
+        <el-table-column prop="vehicle_model_name" label="车型" />
+        <el-table-column prop="feature_support" label="是否支持" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.feature_support ? 'success' : 'info'" size="small">
+              {{ row.feature_support ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="function_status" label="功能状态" width="100" />
+        <el-table-column prop="channel_count" label="通道数" width="80" />
+        <el-table-column prop="power_value" label="功率(W)" width="80" />
+      </el-table>
+    </el-dialog>
+
+    <!-- 脚本详情弹窗 -->
+    <el-dialog v-model="scriptDetailVisible" title="脚本详情" width="900px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="脚本编号">{{ scriptDetailData.script_code }}</el-descriptions-item>
+        <el-descriptions-item label="脚本类型">{{ scriptDetailData.script_type }}</el-descriptions-item>
+        <el-descriptions-item label="脚本标题" :span="2">{{ scriptDetailData.title }}</el-descriptions-item>
+        <el-descriptions-item label="脚本路径" :span="2">{{ scriptDetailData.script_path }}</el-descriptions-item>
+        <el-descriptions-item label="Gauge框架">
+          <el-tag :type="scriptDetailData.gauge_framework ? 'success' : 'info'" size="small">
+            {{ scriptDetailData.gauge_framework ? '是' : '否' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="版本">{{ scriptDetailData.version }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>测试场景</el-divider>
+      <el-table :data="scriptDetailData.scenarios || []" border style="width: 100%">
+        <el-table-column prop="scenario_name" label="场景名称" />
+        <el-table-column prop="scenario_type" label="场景类型" width="100" />
+        <el-table-column prop="spec_file" label="Spec文件" />
+        <el-table-column prop="table_driven" label="表驱动" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.table_driven ? 'success' : 'info'" size="small">
+              {{ row.table_driven ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="showScenarioDetail(row)">详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <!-- 场景详情弹窗 -->
+    <el-dialog v-model="scenarioDetailVisible" title="场景详情" width="700px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="场景名称">{{ scenarioDetailData.scenario_name }}</el-descriptions-item>
+        <el-descriptions-item label="场景类型">{{ scenarioDetailData.scenario_type }}</el-descriptions-item>
+        <el-descriptions-item label="Spec文件" :span="2">{{ scenarioDetailData.spec_file }}</el-descriptions-item>
+        <el-descriptions-item label="执行顺序">{{ scenarioDetailData.execution_order }}</el-descriptions-item>
+        <el-descriptions-item label="超时时间">{{ scenarioDetailData.timeout }}ms</el-descriptions-item>
+      </el-descriptions>
+
+      <template v-if="scenarioDetailData.value_table && Object.keys(scenarioDetailData.value_table).length > 0">
+        <el-divider>取值表</el-divider>
+        <pre class="json-block">{{ JSON.stringify(scenarioDetailData.value_table, null, 2) }}</pre>
+      </template>
+
+      <template v-if="scenarioDetailData.parameters && scenarioDetailData.parameters.length > 0">
+        <el-divider>场景参数</el-divider>
+        <el-table :data="scenarioDetailData.parameters" border style="width: 100%">
+          <el-table-column prop="param_name" label="参数名" />
+          <el-table-column prop="param_value" label="参数值" />
+          <el-table-column prop="param_type" label="类型" width="80" />
+          <el-table-column prop="is_required" label="必填" width="60">
+            <template #default="{ row }">
+              <el-tag :type="row.is_required ? 'danger' : 'info'" size="small">
+                {{ row.is_required ? '是' : '否' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="说明" show-overflow-tooltip />
+        </el-table>
+      </template>
+
+      <template v-if="scenarioDetailData.data_tables && scenarioDetailData.data_tables.length > 0">
+        <el-divider>数据表</el-divider>
+        <el-table :data="scenarioDetailData.data_tables" border style="width: 100%">
+          <el-table-column prop="row_name" label="行名" />
+          <el-table-column prop="description" label="说明" />
+          <el-table-column label="数据值">
+            <template #default="{ row }">
+              <pre class="json-inline">{{ JSON.stringify(row.data_value, null, 2) }}</pre>
+            </template>
+          </el-table-column>
+        </el-table>
       </template>
     </el-dialog>
   </div>
@@ -156,15 +374,31 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { testCaseApi, testCaseGroupApi, statsApi } from '@/api'
+import { testCaseApi, testCaseGroupApi, statsApi, requirementApi, testScriptApi, testScenarioApi, canMatrixApi } from '@/api'
+import { exportToExcel, statusMap, priorityMap } from '@/utils/export'
 
 const tableData = ref([])
 const groupTree = ref([])
+const requirements = ref([])
+const scripts = ref([])
+const canMatrices = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
+const detailVisible = ref(false)
+const groupDialogVisible = ref(false)
+const reqDetailVisible = ref(false)
+const scriptDetailVisible = ref(false)
+const scenarioDetailVisible = ref(false)
 const dialogTitle = ref('')
+const groupDialogTitle = ref('')
 const formRef = ref(null)
+const groupFormRef = ref(null)
 const editingId = ref(null)
+const groupEditingId = ref(null)
+const detailData = ref({})
+const reqDetailData = ref({})
+const scriptDetailData = ref({})
+const scenarioDetailData = ref({})
 
 const searchParams = reactive({
   page: 1,
@@ -184,7 +418,17 @@ const formData = reactive({
   test_steps: '',
   expected_results: '',
   level: 'P1',
-  status: 'draft'
+  status: 'draft',
+  requirement_id: '',
+  script_id: '',
+  can_matrix_id: ''
+})
+
+const groupFormData = reactive({
+  parent_id: '',
+  name: '',
+  description: '',
+  sort_order: 0
 })
 
 const formRules = {
@@ -195,8 +439,12 @@ const formRules = {
   expected_results: [{ required: true, message: '请输入预期结果', trigger: 'blur' }]
 }
 
+const groupFormRules = {
+  name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
+}
+
 const getPriorityType = (priority) => {
-  const map = { P0: 'danger', P1: 'warning', P2: 'success' }
+  const map = { S: 'danger', A: 'warning', B: 'success', C: 'info' }
   return map[priority] || 'info'
 }
 
@@ -210,11 +458,48 @@ const getStatusText = (status) => {
   return map[status] || status
 }
 
+const getTestStatusType = (status) => {
+  const map = { pending: 'info', pass: 'success', fail: 'danger', blocked: 'warning' }
+  return map[status] || 'info'
+}
+
+const getTestStatusText = (status) => {
+  const map = { pending: '待执行', pass: '通过', fail: '失败', blocked: '阻塞' }
+  return map[status] || status || '-'
+}
+
 const loadGroupTree = async () => {
   try {
     groupTree.value = await statsApi.getTree('test-case-groups')
   } catch (error) {
     console.error('加载分组树失败:', error)
+  }
+}
+
+const loadRequirements = async () => {
+  try {
+    const res = await requirementApi.getList({ per_page: 100 })
+    requirements.value = res.items
+  } catch (error) {
+    console.error('加载需求失败:', error)
+  }
+}
+
+const loadScripts = async () => {
+  try {
+    const res = await testScriptApi.getList({ per_page: 100 })
+    scripts.value = res.items
+  } catch (error) {
+    console.error('加载脚本失败:', error)
+  }
+}
+
+const loadCanMatrices = async () => {
+  try {
+    const res = await canMatrixApi.getList({ per_page: 100 })
+    canMatrices.value = res.items
+  } catch (error) {
+    console.error('加载CAN矩阵失败:', error)
   }
 }
 
@@ -243,7 +528,12 @@ const resetSearch = () => {
 }
 
 const handleAddGroup = () => {
-  ElMessage.info('新增分组功能开发中')
+  groupDialogTitle.value = '新增分组'
+  groupEditingId.value = null
+  Object.assign(groupFormData, {
+    parent_id: '', name: '', description: '', sort_order: 0
+  })
+  groupDialogVisible.value = true
 }
 
 const handleAdd = () => {
@@ -252,7 +542,8 @@ const handleAdd = () => {
   Object.assign(formData, {
     case_code: '', group_id: searchParams.group_id || '', title: '',
     description: '', preconditions: '', test_steps: '',
-    expected_results: '', level: 'P1', status: 'draft'
+    expected_results: '', level: 'P1', status: 'draft',
+    requirement_id: '', script_id: '', can_matrix_id: ''
   })
   dialogVisible.value = true
 }
@@ -269,13 +560,21 @@ const handleEdit = (row) => {
     test_steps: row.test_steps,
     expected_results: row.expected_results,
     level: row.level,
-    status: row.status
+    status: row.status,
+    requirement_id: row.requirement_id || '',
+    script_id: row.script_id || '',
+    can_matrix_id: row.can_matrix_id || ''
   })
   dialogVisible.value = true
 }
 
-const handleDetail = (row) => {
-  ElMessage.info('详情功能开发中')
+const handleDetail = async (row) => {
+  try {
+    detailData.value = await testCaseApi.getDetail(row.id)
+    detailVisible.value = true
+  } catch (error) {
+    console.error('获取详情失败:', error)
+  }
 }
 
 const handleSubmit = async () => {
@@ -309,9 +608,70 @@ const handleDelete = (row) => {
   }).catch(() => {})
 }
 
+const handleExport = () => {
+  const columns = [
+    { prop: 'case_code', label: '用例编号', width: 15 },
+    { prop: 'title', label: '用例标题', width: 30 },
+    { prop: 'group_name', label: '所属分组', width: 15 },
+    { prop: 'level', label: '优先级', width: 10 },
+    { prop: 'requirement_code', label: '关联需求', width: 15 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val },
+    { prop: 'created_at', label: '创建时间', width: 20 }
+  ]
+  exportToExcel(tableData.value, columns, '测试用例列表')
+  ElMessage.success('导出成功')
+}
+
+const handleGroupSubmit = async () => {
+  try {
+    await groupFormRef.value.validate()
+    if (groupEditingId.value) {
+      await testCaseGroupApi.update(groupEditingId.value, groupFormData)
+      ElMessage.success('更新成功')
+    } else {
+      await testCaseGroupApi.create(groupFormData)
+      ElMessage.success('创建成功')
+    }
+    groupDialogVisible.value = false
+    loadGroupTree()
+  } catch (error) {
+    console.error('提交失败:', error)
+  }
+}
+
+const showRequirementDetail = async (id) => {
+  try {
+    reqDetailData.value = await requirementApi.getDetail(id)
+    reqDetailVisible.value = true
+  } catch (error) {
+    console.error('获取需求详情失败:', error)
+  }
+}
+
+const showScriptDetail = async (id) => {
+  try {
+    scriptDetailData.value = await testScriptApi.getDetail(id)
+    scriptDetailVisible.value = true
+  } catch (error) {
+    console.error('获取脚本详情失败:', error)
+  }
+}
+
+const showScenarioDetail = async (row) => {
+  try {
+    scenarioDetailData.value = await testScenarioApi.getDetail(row.id)
+    scenarioDetailVisible.value = true
+  } catch (error) {
+    console.error('获取场景详情失败:', error)
+  }
+}
+
 onMounted(() => {
   loadGroupTree()
   loadData()
+  loadRequirements()
+  loadScripts()
+  loadCanMatrices()
 })
 </script>
 
@@ -329,5 +689,27 @@ onMounted(() => {
 .group-card {
   height: calc(100vh - 200px);
   overflow-y: auto;
+}
+
+.json-block {
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.json-inline {
+  background-color: #f5f7fa;
+  border-radius: 2px;
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

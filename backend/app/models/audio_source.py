@@ -16,7 +16,8 @@ class A2BSlot(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # 关系
-    audio_mappings = db.relationship('AudioSourceSlotMapping', backref='a2b_slot', lazy='dynamic')
+    audio_mappings = db.relationship('AudioSourceSlotMapping', back_populates='a2b_slot', lazy='dynamic')
+    matrix_entries = db.relationship('PlaybackMatrixBase', back_populates='slot', lazy='dynamic')
 
     def to_dict(self):
         return {
@@ -42,7 +43,8 @@ class AudioSourceType(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # 关系
-    slot_mappings = db.relationship('AudioSourceSlotMapping', backref='audio_source', lazy='dynamic')
+    slot_mappings = db.relationship('AudioSourceSlotMapping', back_populates='audio_source', lazy='dynamic')
+    matrix_entries = db.relationship('PlaybackMatrixBase', back_populates='audio_source', lazy='dynamic')
 
     def to_dict(self):
         return {
@@ -65,6 +67,10 @@ class AudioSourceSlotMapping(db.Model):
     is_default = db.Column(db.Boolean, default=False, comment='是否默认')
     remark = db.Column(db.Text, comment='备注')
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+    # 关系
+    a2b_slot = db.relationship('A2BSlot', back_populates='audio_mappings')
+    audio_source = db.relationship('AudioSourceType', back_populates='slot_mappings')
 
     def to_dict(self):
         return {

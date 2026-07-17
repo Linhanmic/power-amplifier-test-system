@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>车型管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增车型
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增车型
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -97,6 +102,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { vehicleModelApi, platformApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const platforms = ref([])
@@ -204,6 +210,20 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'id', label: 'ID', width: 10 },
+    { prop: 'platform_name', label: '所属平台', width: 15 },
+    { prop: 'name', label: '车型名称', width: 20 },
+    { prop: 'code', label: '车型编码', width: 15 },
+    { prop: 'model_year', label: '年款', width: 10 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val },
+    { prop: 'remark', label: '备注', width: 30 }
+  ]
+  exportToExcel(tableData.value, columns, '车型列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

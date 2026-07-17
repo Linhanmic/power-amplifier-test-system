@@ -18,8 +18,9 @@ class PlaybackMatrix(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     # 关系
-    base_matrices = db.relationship('PlaybackMatrixBase', backref='playback_matrix', lazy='dynamic')
-    conditions = db.relationship('PlaybackMatrixCondition', backref='playback_matrix', lazy='dynamic')
+    vehicle_config = db.relationship('VehicleConfig', back_populates='playback_matrices')
+    base_matrices = db.relationship('PlaybackMatrixBase', back_populates='playback_matrix', lazy='dynamic')
+    conditions = db.relationship('PlaybackMatrixCondition', back_populates='playback_matrix', lazy='dynamic')
 
     def to_dict(self):
         return {
@@ -53,8 +54,9 @@ class PlaybackMatrixBase(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # 关系
-    slot = db.relationship('A2BSlot', backref='matrix_entries')
-    audio_source = db.relationship('AudioSourceType', backref='matrix_entries')
+    playback_matrix = db.relationship('PlaybackMatrix', back_populates='base_matrices')
+    slot = db.relationship('A2BSlot', back_populates='matrix_entries')
+    audio_source = db.relationship('AudioSourceType', back_populates='matrix_entries')
 
     def to_dict(self):
         return {
@@ -85,6 +87,9 @@ class PlaybackMatrixCondition(db.Model):
     is_active = db.Column(db.Boolean, default=True, comment='是否激活')
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # 关系
+    playback_matrix = db.relationship('PlaybackMatrix', back_populates='conditions')
 
     @property
     def condition_value_dict(self):

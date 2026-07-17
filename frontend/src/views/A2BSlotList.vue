@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>A2B Slot管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增Slot
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增Slot
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -71,6 +76,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { a2bSlotApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const dialogVisible = ref(false)
@@ -153,6 +159,19 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'slot_name', label: 'Slot名称', width: 15 },
+    { prop: 'slot_number', label: 'Slot编号', width: 10 },
+    { prop: 'slot_type', label: '类型', width: 10 },
+    { prop: 'max_channels', label: '最大通道数', width: 12 },
+    { prop: 'description', label: '描述', width: 30 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
+  ]
+  exportToExcel(tableData.value, columns, 'A2B_Slot列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>车辆配置管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增配置
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增配置
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -27,22 +32,8 @@
         <el-table-column prop="vehicle_model_name" label="车型" />
         <el-table-column prop="config_name" label="配置名称" />
         <el-table-column prop="config_code" label="配置编码" />
-        <el-table-column prop="speaker_count" label="扬声器数" width="100" />
-        <el-table-column prop="has_subwoofer" label="低音炮" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.has_subwoofer ? 'success' : 'info'" size="small">
-              {{ row.has_subwoofer ? '有' : '无' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="has_dsp" label="DSP" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.has_dsp ? 'success' : 'info'" size="small">
-              {{ row.has_dsp ? '有' : '无' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="amplifier_power" label="功放功率(W)" width="120" />
+        <el-table-column prop="software_code" label="软件编码" />
+        <el-table-column prop="description" label="详情" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
@@ -83,30 +74,12 @@
         <el-form-item label="配置编码" prop="config_code">
           <el-input v-model="formData.config_code" placeholder="请输入配置编码" />
         </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="扬声器数量">
-              <el-input-number v-model="formData.speaker_count" :min="0" :max="32" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="功放功率(W)">
-              <el-input-number v-model="formData.amplifier_power" :min="0" :max="2000" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="低音炮">
-              <el-switch v-model="formData.has_subwoofer" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="DSP">
-              <el-switch v-model="formData.has_dsp" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="软件编码">
+          <el-input v-model="formData.software_code" placeholder="请输入软件编码" />
+        </el-form-item>
+        <el-form-item label="详情描述">
+          <el-input v-model="formData.description" type="textarea" :rows="4" placeholder="请输入详情描述" />
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="formData.status">
             <el-radio value="active">启用</el-radio>
@@ -129,6 +102,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { vehicleConfigApi, vehicleModelApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const vehicleModels = ref([])
@@ -148,10 +122,8 @@ const formData = reactive({
   vehicle_model_id: '',
   config_name: '',
   config_code: '',
-  speaker_count: 8,
-  has_subwoofer: false,
-  has_dsp: false,
-  amplifier_power: 400,
+  software_code: '',
+  description: '',
   status: 'active',
   remark: ''
 })
@@ -191,9 +163,8 @@ const handleAdd = () => {
   dialogTitle.value = '新增配置'
   editingId.value = null
   Object.assign(formData, {
-    vehicle_model_id: '', config_name: '', config_code: '',
-    speaker_count: 8, has_subwoofer: false, has_dsp: false,
-    amplifier_power: 400, status: 'active', remark: ''
+    vehicle_model_id: '', config_name: '', config_code: '', software_code: '',
+    description: '', status: 'active', remark: ''
   })
   dialogVisible.value = true
 }
@@ -205,10 +176,8 @@ const handleEdit = (row) => {
     vehicle_model_id: row.vehicle_model_id,
     config_name: row.config_name,
     config_code: row.config_code,
-    speaker_count: row.speaker_count,
-    has_subwoofer: row.has_subwoofer,
-    has_dsp: row.has_dsp,
-    amplifier_power: row.amplifier_power,
+    software_code: row.software_code,
+    description: row.description,
     status: row.status,
     remark: row.remark
   })
@@ -244,6 +213,20 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'id', label: 'ID', width: 10 },
+    { prop: 'vehicle_model_name', label: '车型', width: 15 },
+    { prop: 'config_name', label: '配置名称', width: 20 },
+    { prop: 'config_code', label: '配置编码', width: 15 },
+    { prop: 'software_code', label: '软件编码', width: 20 },
+    { prop: 'description', label: '详情', width: 30 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
+  ]
+  exportToExcel(tableData.value, columns, '车辆配置列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

@@ -22,6 +22,9 @@ class SpeakerChannelMapping(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
+    # 关系
+    vehicle_config = db.relationship('VehicleConfig', back_populates='speaker_mappings')
+
     @property
     def a2b_slot_ids_list(self):
         if self.a2b_slot_ids:

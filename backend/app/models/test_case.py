@@ -96,7 +96,7 @@ class TestCaseVehicle(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # 关系
-    vehicle_config = db.relationship('VehicleConfig', backref='test_case_vehicles')
+    vehicle_config = db.relationship('VehicleConfig', back_populates='test_case_vehicles')
 
     def to_dict(self):
         return {

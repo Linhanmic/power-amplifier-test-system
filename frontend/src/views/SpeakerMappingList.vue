@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>扬声器通道映射</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增映射
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增映射
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -133,6 +138,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { speakerMappingApi, vehicleConfigApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const configs = ref([])
@@ -251,6 +257,22 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'speaker_name', label: '喇叭名称', width: 15 },
+    { prop: 'speaker_position', label: '喇叭位置', width: 15 },
+    { prop: 'channel_type', label: '通道类型', width: 10 },
+    { prop: 'channel_number', label: '通道号', width: 10 },
+    { prop: 'channel_name', label: '通道名称', width: 10 },
+    { prop: 'power', label: '功率(W)', width: 10 },
+    { prop: 'impedance', label: '阻抗(Ω)', width: 10 },
+    { prop: 'can_signal_name', label: 'CAN信号', width: 15 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
+  ]
+  exportToExcel(tableData.value, columns, '扬声器映射列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

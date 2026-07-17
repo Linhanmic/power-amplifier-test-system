@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>信号定义管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增信号
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增信号
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -147,6 +152,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { signalDefinitionApi, canMatrixApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const matrices = ref([])
@@ -269,6 +275,25 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'signal_name', label: '信号名称', width: 20 },
+    { prop: 'message_id', label: '报文ID', width: 12 },
+    { prop: 'message_name', label: '报文名称', width: 20 },
+    { prop: 'signal_type', label: '类型', width: 10 },
+    { prop: 'data_length', label: '长度(bit)', width: 10 },
+    { prop: 'start_bit', label: '起始位', width: 10 },
+    { prop: 'factor', label: '系数', width: 10 },
+    { prop: 'offset', label: '偏移', width: 10 },
+    { prop: 'min_value', label: '最小值', width: 10 },
+    { prop: 'max_value', label: '最大值', width: 10 },
+    { prop: 'unit', label: '单位', width: 10 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
+  ]
+  exportToExcel(tableData.value, columns, '信号定义列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

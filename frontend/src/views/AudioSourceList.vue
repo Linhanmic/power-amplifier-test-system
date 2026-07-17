@@ -4,9 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>音源管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增音源
-          </el-button>
+          <div>
+            <el-button type="success" @click="handleExport">
+              <el-icon><Download /></el-icon>导出Excel
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增音源
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -60,6 +65,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { audioSourceTypeApi } from '@/api'
+import { exportToExcel, statusMap } from '@/utils/export'
 
 const tableData = ref([])
 const dialogVisible = ref(false)
@@ -137,6 +143,17 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   }).catch(() => {})
+}
+
+const handleExport = () => {
+  const columns = [
+    { prop: 'source_name', label: '音源名称', width: 20 },
+    { prop: 'source_code', label: '音源编码', width: 15 },
+    { prop: 'description', label: '描述', width: 30 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
+  ]
+  exportToExcel(tableData.value, columns, '音源类型列表')
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {
