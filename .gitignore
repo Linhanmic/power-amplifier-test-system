@@ -4,8 +4,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
 env/
+venv/
+.venv/
 *.egg-info/
 dist/
 build/
@@ -23,14 +24,9 @@ yarn-error.log*
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
-
 # Database
 *.db
 *.sqlite
-*.sqlite3
 
 # Environment
 .env
@@ -38,18 +34,21 @@ Thumbs.db
 .env.*.local
 
 # Logs
+logs/
 *.log
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Uploads
 uploads/
-imports/
-
-# Data files (keep structure, ignore content)
-data/database/*.db
-data/uploads/*
-data/imports/*
-!data/**/.gitkeep
 
 # Build
 frontend/dist/
-backend/static/
+backend/instance/
+
+# Temporary
+*.tmp
+*.bak
+*.backup
