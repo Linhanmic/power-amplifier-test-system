@@ -251,61 +251,93 @@ def init_mock_data():
         db.session.flush()
         print(f"✓ 创建测试用例分组: {len(case_groups) + len(sub_groups)}个")
 
-        # 13. 测试脚本 (Gauge框架)
-        test_scripts = [
-            TestScript(script_code='SCR-001', title='功放开关机测试脚本', script_path='specs/power_control.spec',
-                      tags=json.dumps(['功放', '开关机']), status='active'),
-            TestScript(script_code='SCR-002', title='音量控制测试脚本', script_path='specs/volume_control.spec',
-                      tags=json.dumps(['功放', '音量']), status='active'),
-            TestScript(script_code='SCR-003', title='蓝牙音频播放脚本', script_path='specs/bluetooth_audio.spec',
-                      tags=json.dumps(['蓝牙', '音频']), status='active'),
+        # 13. Gauge项目
+        from app.models.gauge import GaugeProject, GaugeSpec, GaugeScenario, GaugeStep, GaugeTable
+        gauge_projects = [
+            GaugeProject(project_code='GPROJ-PA', name='功放测试项目', description='功放功能自动化测试项目',
+                        root_path='tests/power_amplifier', gauge_version='1.5.0', status='active', created_by='系统'),
+            GaugeProject(project_code='GPROJ-AUD', name='音频测试项目', description='音频系统集成测试项目',
+                        root_path='tests/audio_system', gauge_version='1.5.0', status='active', created_by='系统'),
         ]
-        db.session.add_all(test_scripts)
+        db.session.add_all(gauge_projects)
         db.session.flush()
-        print(f"✓ 创建测试脚本: {len(test_scripts)}个")
+        print(f"✓ 创建Gauge项目: {len(gauge_projects)}个")
 
-        # 14. 测试场景
-        test_scenarios = [
-            TestScenario(script_id=test_scripts[0].id, scenario_name='功放开机测试', spec_file='specs/power_control.spec',
-                        scenario_type='basic', table_driven=False, execution_order=1, timeout=30000),
-            TestScenario(script_id=test_scripts[0].id, scenario_name='功放关机测试', spec_file='specs/power_control.spec',
-                        scenario_type='basic', table_driven=False, execution_order=2, timeout=30000),
-            TestScenario(script_id=test_scripts[1].id, scenario_name='音量调节测试', spec_file='specs/volume_control.spec',
-                        scenario_type='table_driven', table_driven=True,
-                        value_table=json.dumps({'volume_levels': [0, 25, 50, 75, 100]}, ensure_ascii=False),
-                        execution_order=1, timeout=60000),
+        # 14. Gauge Spec（规格文件）
+        gauge_specs = [
+            GaugeSpec(project_id=gauge_projects[0].id, spec_code='SPEC-PWR', spec_name='功放开关机规格',
+                     file_path='specs/power_control.spec', tags=json.dumps(['功放', '开关机']),
+                     execution_order=1, status='active'),
+            GaugeSpec(project_id=gauge_projects[0].id, spec_code='SPEC-VOL', spec_name='音量控制规格',
+                     file_path='specs/volume_control.spec', tags=json.dumps(['功放', '音量']),
+                     execution_order=2, status='active'),
+            GaugeSpec(project_id=gauge_projects[1].id, spec_code='SPEC-BT', spec_name='蓝牙音频规格',
+                     file_path='specs/bluetooth_audio.spec', tags=json.dumps(['蓝牙', '音频']),
+                     execution_order=1, status='active'),
         ]
-        db.session.add_all(test_scenarios)
+        db.session.add_all(gauge_specs)
         db.session.flush()
-        print(f"✓ 创建测试场景: {len(test_scenarios)}个")
+        print(f"✓ 创建Gauge Spec: {len(gauge_specs)}个")
 
-        # 15. 场景参数
-        scenario_params = [
-            ScenarioParameter(scenario_id=test_scenarios[0].id, param_name='power_state', param_value='ON',
-                             param_type='string', is_required=True, description='目标电源状态'),
-            ScenarioParameter(scenario_id=test_scenarios[0].id, param_name='delay_ms', param_value='1000',
-                             param_type='integer', is_required=False, description='等待时间(毫秒)'),
-            ScenarioParameter(scenario_id=test_scenarios[2].id, param_name='step_size', param_value='5',
-                             param_type='integer', is_required=True, description='音量调节步长'),
+        # 15. Gauge Scenario（场景）
+        gauge_scenarios = [
+            GaugeScenario(spec_id=gauge_specs[0].id, scenario_name='功放开机测试',
+                         scenario_type='basic', execution_order=1, timeout=30000, status='active'),
+            GaugeScenario(spec_id=gauge_specs[0].id, scenario_name='功放关机测试',
+                         scenario_type='basic', execution_order=2, timeout=30000, status='active'),
+            GaugeScenario(spec_id=gauge_specs[1].id, scenario_name='音量调节测试',
+                         scenario_type='table_driven', execution_order=1, timeout=60000, status='active'),
+            GaugeScenario(spec_id=gauge_specs[2].id, scenario_name='蓝牙连接播放测试',
+                         scenario_type='basic', execution_order=1, timeout=60000, status='active'),
         ]
-        db.session.add_all(scenario_params)
+        db.session.add_all(gauge_scenarios)
         db.session.flush()
-        print(f"✓ 创建场景参数: {len(scenario_params)}个")
+        print(f"✓ 创建Gauge Scenario: {len(gauge_scenarios)}个")
 
-        # 16. 场景数据表
-        scenario_data_tables = [
-            ScenarioDataTable(scenario_id=test_scenarios[2].id, row_name='volume_0',
-                             data_value=json.dumps({'target': 0, 'expected': '静音'}), description='音量0测试'),
-            ScenarioDataTable(scenario_id=test_scenarios[2].id, row_name='volume_50',
-                             data_value=json.dumps({'target': 50, 'expected': '中等音量'}), description='音量50测试'),
-            ScenarioDataTable(scenario_id=test_scenarios[2].id, row_name='volume_100',
-                             data_value=json.dumps({'target': 100, 'expected': '最大音量'}), description='音量100测试'),
+        # 16. Gauge Step（步骤）
+        gauge_steps = [
+            # 功放开机测试步骤
+            GaugeStep(scenario_id=gauge_scenarios[0].id, step_order=1, step_text='打开车辆电源', step_type='setup'),
+            GaugeStep(scenario_id=gauge_scenarios[0].id, step_order=2, step_text='等待功放初始化完成', step_type='action'),
+            GaugeStep(scenario_id=gauge_scenarios[0].id, step_order=3, step_text='检查功放状态为ON', step_type='assertion'),
+            GaugeStep(scenario_id=gauge_scenarios[0].id, step_order=4, step_text='验证CAN信号AMP_PowerStatus=1', step_type='assertion'),
+            # 功放关机测试步骤
+            GaugeStep(scenario_id=gauge_scenarios[1].id, step_order=1, step_text='关闭车辆电源', step_type='setup'),
+            GaugeStep(scenario_id=gauge_scenarios[1].id, step_order=2, step_text='等待功放关机', step_type='action'),
+            GaugeStep(scenario_id=gauge_scenarios[1].id, step_order=3, step_text='检查功放状态为OFF', step_type='assertion'),
+            # 音量调节测试步骤（参数化）
+            GaugeStep(scenario_id=gauge_scenarios[2].id, step_order=1, step_text='设置音量为<target>', step_type='action',
+                     is_parametric=True, parameters=json.dumps(['target'])),
+            GaugeStep(scenario_id=gauge_scenarios[2].id, step_order=2, step_text='验证音量显示为<expected>', step_type='assertion',
+                     is_parametric=True, parameters=json.dumps(['expected'])),
+            # 蓝牙连接播放测试步骤
+            GaugeStep(scenario_id=gauge_scenarios[3].id, step_order=1, step_text='建立蓝牙连接', step_type='setup'),
+            GaugeStep(scenario_id=gauge_scenarios[3].id, step_order=2, step_text='播放手机音乐', step_type='action'),
+            GaugeStep(scenario_id=gauge_scenarios[3].id, step_order=3, step_text='检查音频输出正常', step_type='assertion'),
         ]
-        db.session.add_all(scenario_data_tables)
+        db.session.add_all(gauge_steps)
         db.session.flush()
-        print(f"✓ 创建场景数据表: {len(scenario_data_tables)}个")
+        print(f"✓ 创建Gauge Step: {len(gauge_steps)}个")
 
-        # 17. 测试用例 (SwQT格式: SwQT-模块编码-序号)
+        # 17. Gauge Table（数据驱动表）
+        gauge_tables = [
+            GaugeTable(scenario_id=gauge_scenarios[2].id, table_name='音量测试数据',
+                      table_type='parameter',
+                      headers=json.dumps(['target', 'expected']),
+                      rows_data=json.dumps([
+                          {'target': '0', 'expected': '静音'},
+                          {'target': '25', 'expected': '低音量'},
+                          {'target': '50', 'expected': '中等音量'},
+                          {'target': '75', 'expected': '较高音量'},
+                          {'target': '100', 'expected': '最大音量'}
+                      ]),
+                      description='不同音量级别的测试数据'),
+        ]
+        db.session.add_all(gauge_tables)
+        db.session.flush()
+        print(f"✓ 创建Gauge Table: {len(gauge_tables)}个")
+
+        # 18. 测试用例 (SwQT格式: SwQT-模块编码-序号)
         from datetime import date
         test_cases = [
             TestCase(case_code='SwQT-PWR-001', group_id=sub_groups[0].id,
@@ -314,28 +346,28 @@ def init_mock_data():
                     test_steps='1. 打开车辆电源\n2. 等待功放初始化\n3. 检查功放状态',
                     expected_results='功放状态为ON，CAN信号AMP_PowerStatus=1',
                     tags='冒烟,开机', designer='张三', design_date=date(2025, 1, 15), publish_date=date(2025, 2, 1),
-                    status='Accepted', scenario_id=test_scenarios[0].id, can_matrix_id=can_matrices[0].id),
+                    status='Accepted', gauge_scenario_id=gauge_scenarios[0].id, can_matrix_id=can_matrices[0].id),
             TestCase(case_code='SwQT-PWR-002', group_id=sub_groups[0].id,
                     case_name='功放关机功能测试', test_purpose='验证功放能够正常关机',
                     level='S', preconditions='车辆电源ON，功放已开机',
                     test_steps='1. 关闭车辆电源\n2. 等待功放关机\n3. 检查功放状态',
                     expected_results='功放状态为OFF，CAN信号AMP_PowerStatus=0',
                     tags='冒烟,关机', designer='张三', design_date=date(2025, 1, 15), publish_date=date(2025, 2, 1),
-                    status='Accepted', scenario_id=test_scenarios[1].id, can_matrix_id=can_matrices[0].id),
+                    status='Accepted', gauge_scenario_id=gauge_scenarios[1].id, can_matrix_id=can_matrices[0].id),
             TestCase(case_code='SwQT-VOL-001', group_id=sub_groups[1].id,
                     case_name='音量增加测试', test_purpose='验证音量能够正常增加',
                     level='A', preconditions='功放已开机，音量为0',
                     test_steps='1. 发送音量增加命令\n2. 检查音量变化\n3. 验证CAN信号',
                     expected_results='音量增加，CAN信号AMP_Volume递增',
                     tags='功能,音量', designer='李四', design_date=date(2025, 1, 20), publish_date=date(2025, 2, 5),
-                    status='Accepted', scenario_id=test_scenarios[2].id, can_matrix_id=can_matrices[0].id),
+                    status='Accepted', gauge_scenario_id=gauge_scenarios[2].id, can_matrix_id=can_matrices[0].id),
             TestCase(case_code='SwQT-BT-001', group_id=sub_groups[2].id,
                     case_name='蓝牙连接音频播放测试', test_purpose='验证蓝牙连接后的音频播放功能',
                     level='A', preconditions='手机已蓝牙配对',
                     test_steps='1. 建立蓝牙连接\n2. 播放手机音乐\n3. 检查音频输出',
                     expected_results='音频正常播放，CAN信号AUD_SourceSelect=1',
                     tags='功能,蓝牙', designer='李四', design_date=date(2025, 1, 20),
-                    status='Draft', scenario_id=test_scenarios[0].id, can_matrix_id=can_matrices[1].id),
+                    status='Draft', gauge_scenario_id=gauge_scenarios[3].id, can_matrix_id=can_matrices[1].id),
         ]
         db.session.add_all(test_cases)
         db.session.flush()
@@ -430,10 +462,11 @@ def init_mock_data():
         print(f"  - 需求: {len(requirements)}个")
         print(f"  - 需求车型详情: {len(req_vehicle_details)}个")
         print(f"  - 测试用例分组: {len(case_groups) + len(sub_groups)}个")
-        print(f"  - 测试脚本: {len(test_scripts)}个")
-        print(f"  - 测试场景: {len(test_scenarios)}个")
-        print(f"  - 场景参数: {len(scenario_params)}个")
-        print(f"  - 场景数据表: {len(scenario_data_tables)}个")
+        print(f"  - Gauge项目: {len(gauge_projects)}个")
+        print(f"  - Gauge Spec: {len(gauge_specs)}个")
+        print(f"  - Gauge Scenario: {len(gauge_scenarios)}个")
+        print(f"  - Gauge Step: {len(gauge_steps)}个")
+        print(f"  - Gauge Table: {len(gauge_tables)}个")
         print(f"  - 测试用例: {len(test_cases)}个")
         print(f"  - 测试用例车型关联: {len(test_case_vehicles)}个")
         print(f"  - 播放矩阵: {len(playback_matrices)}个")

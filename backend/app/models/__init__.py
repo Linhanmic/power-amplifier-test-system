@@ -11,7 +11,8 @@ def init_db(app):
         from .vehicle import VehicleModel, VehicleConfig
         from .requirement import Requirement, RequirementVehicleDetail
         from .test_case import TestCaseGroup, TestCase, TestCaseVehicle
-        from .test_script import TestScript, TestScenario
+        from .test_script import TestScript, TestScenario, ScenarioParameter, ScenarioDataTable
+        from .gauge import GaugeProject, GaugeSpec, GaugeScenario, GaugeStep, GaugeTable
         from .can_matrix import CANMatrix, SignalDefinition
         from .speaker_mapping import SpeakerChannelMapping
         from .audio_source import A2BSlot, AudioSourceType, AudioSourceSlotMapping

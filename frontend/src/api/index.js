@@ -167,3 +167,33 @@ export const statsApi = {
   getOverview: () => request.get('/stats/overview'),
   getTree: (type) => request.get(`/tree/${type}`)
 }
+
+// Gauge API
+export const gaugeApi = {
+  // 项目
+  getProjects: (params) => request.get('/gauge-projects', { params }),
+  getProjectDetail: (id) => request.get(`/gauge-projects/${id}`),
+  createProject: (data) => request.post('/gauge-projects', data),
+  updateProject: (id, data) => request.put(`/gauge-projects/${id}`, data),
+  deleteProject: (id) => request.delete(`/gauge-projects/${id}`),
+  // Spec
+  getSpecs: (params) => request.get('/gauge-specs', { params }),
+  getSpecDetail: (id) => request.get(`/gauge-specs/${id}`),
+  createSpec: (data) => request.post('/gauge-specs', data),
+  updateSpec: (id, data) => request.put(`/gauge-specs/${id}`, data),
+  deleteSpec: (id) => request.delete(`/gauge-specs/${id}`),
+  // Scenario
+  getScenarios: (params) => request.get('/gauge-scenarios', { params }),
+  getScenarioDetail: (id) => request.get(`/gauge-scenarios/${id}`),
+  createScenario: (data) => request.post('/gauge-scenarios', data),
+  updateScenario: (id, data) => request.put(`/gauge-scenarios/${id}`, data),
+  deleteScenario: (id) => request.delete(`/gauge-scenarios/${id}`),
+  // Step
+  createStep: (data) => request.post('/gauge-steps', data),
+  updateStep: (id, data) => request.put(`/gauge-steps/${id}`, data),
+  deleteStep: (id) => request.delete(`/gauge-steps/${id}`),
+  // Table
+  createTable: (data) => request.post('/gauge-tables', data),
+  updateTable: (id, data) => request.put(`/gauge-tables/${id}`, data),
+  deleteTable: (id) => request.delete(`/gauge-tables/${id}`)
+}

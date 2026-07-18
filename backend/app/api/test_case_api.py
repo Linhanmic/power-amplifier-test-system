@@ -2,7 +2,7 @@ from flask import request
 from flask_restful import Resource
 from app.models import db
 from app.models.test_case import TestCase, TestCaseGroup, TestCaseVehicle
-from app.models.test_script import TestScenario
+from app.models.gauge import GaugeScenario
 
 
 class TestCaseGroupListApi(Resource):
@@ -103,7 +103,7 @@ class TestCaseListApi(Resource):
             design_date=data.get('design_date'),
             publish_date=data.get('publish_date'),
             status=data.get('status', 'Draft'),
-            scenario_id=data.get('scenario_id'),
+            gauge_scenario_id=data.get('gauge_scenario_id'),
             can_matrix_id=data.get('can_matrix_id')
         )
 
@@ -143,7 +143,7 @@ class TestCaseApi(Resource):
         test_case.design_date = data.get('design_date', test_case.design_date)
         test_case.publish_date = data.get('publish_date', test_case.publish_date)
         test_case.status = data.get('status', test_case.status)
-        test_case.scenario_id = data.get('scenario_id', test_case.scenario_id)
+        test_case.gauge_scenario_id = data.get('gauge_scenario_id', test_case.gauge_scenario_id)
         test_case.can_matrix_id = data.get('can_matrix_id', test_case.can_matrix_id)
 
         # 处理多需求关联
@@ -186,21 +186,21 @@ class TestCaseVehicleApi(Resource):
         return {'message': '删除成功'}
 
 
-class ScenarioListApi(Resource):
+class TestCaseGaugeScenarioListApi(Resource):
     def get(self):
-        """获取场景列表（用于下拉选择）"""
-        script_id = request.args.get('script_id', type=int)
-        query = TestScenario.query
-        if script_id:
-            query = query.filter_by(script_id=script_id)
-        scenarios = query.order_by(TestScenario.script_id, TestScenario.execution_order).all()
+        """获取Gauge场景列表（用于下拉选择）"""
+        spec_id = request.args.get('spec_id', type=int)
+        query = GaugeScenario.query.filter_by(status='active')
+        if spec_id:
+            query = query.filter_by(spec_id=spec_id)
+        scenarios = query.order_by(GaugeScenario.execution_order).all()
         return [{
             'id': s.id,
             'scenario_name': s.scenario_name,
-            'script_id': s.script_id,
-            'script_code': s.script.script_code if s.script else None,
-            'script_title': s.script.title if s.script else None,
-            'spec_file': s.spec_file
+            'spec_id': s.spec_id,
+            'spec_code': s.spec.spec_code if s.spec else None,
+            'spec_name': s.spec.spec_name if s.spec else None,
+            'project_name': s.spec.project.name if s.spec and s.spec.project else None
         } for s in scenarios]
 
 
@@ -211,4 +211,4 @@ api.add_resource(TestCaseGroupApi, '/test-case-groups/<int:group_id>')
 api.add_resource(TestCaseListApi, '/test-cases')
 api.add_resource(TestCaseApi, '/test-cases/<int:case_id>')
 api.add_resource(TestCaseVehicleApi, '/test-cases/<int:case_id>/vehicles', '/test-cases/<int:case_id>/vehicles/<int:vehicle_id>')
-api.add_resource(ScenarioListApi, '/scenarios')
+api.add_resource(TestCaseGaugeScenarioListApi, '/test-case-gauge-scenarios')

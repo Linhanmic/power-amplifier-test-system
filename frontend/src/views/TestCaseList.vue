@@ -77,7 +77,7 @@
                 <el-checkbox v-model="columnVisibility.vehicles">适用车型</el-checkbox>
                 <el-checkbox v-model="columnVisibility.level">优先级</el-checkbox>
                 <el-checkbox v-model="columnVisibility.test_triple">前置条件/步骤/结果</el-checkbox>
-                <el-checkbox v-model="columnVisibility.scenario">测试场景</el-checkbox>
+                <el-checkbox v-model="columnVisibility.gauge_info">Gauge场景</el-checkbox>
                 <el-checkbox v-model="columnVisibility.designer">编制人</el-checkbox>
                 <el-checkbox v-model="columnVisibility.design_date">编制日期</el-checkbox>
                 <el-checkbox v-model="columnVisibility.status">状态</el-checkbox>
@@ -132,11 +132,18 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column v-if="columnVisibility.scenario" prop="scenario_name" label="测试场景" width="120">
+            <el-table-column v-if="columnVisibility.gauge_info" label="Gauge场景" width="180">
               <template #default="{ row }">
-                <el-button v-if="row.scenario_id" type="primary" link size="small" @click="showScenarioDetailById(row.scenario_id)">
-                  {{ row.scenario_name }}
-                </el-button>
+                <div v-if="row.gauge_scenario_id" class="gauge-info">
+                  <el-button type="primary" link size="small" @click="showGaugeScenarioDetail(row.gauge_scenario_id)">
+                    {{ row.scenario_name }}
+                  </el-button>
+                  <div class="gauge-path">
+                    <span class="path-item">{{ row.project_name }}</span>
+                    <span class="path-sep">/</span>
+                    <span class="path-item">{{ row.spec_name }}</span>
+                  </div>
+                </div>
                 <span v-else>-</span>
               </template>
             </el-table-column>
@@ -250,12 +257,16 @@
         <el-form-item label="发布日期">
           <el-date-picker v-model="formData.publish_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" />
         </el-form-item>
-        <el-form-item label="关联场景">
-          <el-select v-model="formData.scenario_id" placeholder="请选择场景" clearable filterable>
-            <el-option-group v-for="script in scripts" :key="script.id" :label="`${script.script_code} - ${script.title}`">
-              <el-option v-for="s in script.scenarios" :key="s.id" :label="s.scenario_name" :value="s.id" />
-            </el-option-group>
-          </el-select>
+        <el-form-item label="关联Gauge场景">
+          <el-cascader
+            v-model="formData.gauge_scenario_path"
+            :options="gaugeScenarioOptions"
+            :props="{ checkStrictly: true }"
+            placeholder="请选择: 项目 > Spec > 场景"
+            clearable
+            filterable
+            @change="handleGaugeScenarioChange"
+          />
         </el-form-item>
         <el-form-item label="CAN矩阵">
           <el-select v-model="formData.can_matrix_id" placeholder="请选择CAN矩阵" clearable>
@@ -301,19 +312,18 @@
         <el-descriptions-item label="编制人">{{ detailData.designer || '-' }}</el-descriptions-item>
         <el-descriptions-item label="编制日期">{{ detailData.design_date || '-' }}</el-descriptions-item>
         <el-descriptions-item label="发布日期">{{ detailData.publish_date || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="关联场景">
-          <el-button v-if="detailData.scenario_id" type="primary" link @click="showScenarioDetailById(detailData.scenario_id)">
-            {{ detailData.scenario_name }}
-          </el-button>
-          <span v-else>-</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="所属脚本">
-          <el-button v-if="detailData.script_code" type="primary" link @click="showScriptDetail(detailData.script_id)">
-            {{ detailData.script_code }} - {{ detailData.script_title }}
-          </el-button>
-          <span v-else>-</span>
-        </el-descriptions-item>
       </el-descriptions>
+
+      <el-divider>Gauge关联信息</el-divider>
+      <el-descriptions :column="2" border v-if="detailData.gauge_scenario_id">
+        <el-descriptions-item label="项目名称">{{ detailData.project_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="项目编号">{{ detailData.project_code || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Spec名称">{{ detailData.spec_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Spec编号">{{ detailData.spec_code || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="场景名称">{{ detailData.scenario_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Spec文件">{{ detailData.spec_file || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <el-empty v-else description="未关联Gauge场景" :image-size="60" />
 
       <el-divider>适用车型</el-divider>
       <el-table :data="detailData.vehicles || []" border style="width: 100%">
@@ -322,6 +332,44 @@
         <el-table-column prop="software_code" label="软件编码" />
         <el-table-column prop="expected_result" label="预期结果" show-overflow-tooltip />
       </el-table>
+    </el-dialog>
+
+    <!-- Gauge场景详情弹窗 -->
+    <el-dialog v-model="gaugeScenarioDetailVisible" title="Gauge场景详情" width="800px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="项目">{{ gaugeScenarioDetailData.project_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Spec">{{ gaugeScenarioDetailData.spec_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="场景名称">{{ gaugeScenarioDetailData.scenario_name }}</el-descriptions-item>
+        <el-descriptions-item label="场景类型">{{ gaugeScenarioDetailData.scenario_type }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>步骤</el-divider>
+      <el-table :data="gaugeScenarioDetailData.steps || []" border style="width: 100%">
+        <el-table-column prop="step_order" label="顺序" width="60" />
+        <el-table-column prop="step_text" label="步骤文本" min-width="200" />
+        <el-table-column prop="step_type" label="类型" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStepType(row.step_type)" size="small">{{ getStepTypeText(row.step_type) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="is_parametric" label="参数化" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.is_parametric ? 'success' : 'info'" size="small">
+              {{ row.is_parametric ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <template v-if="gaugeScenarioDetailData.tables && gaugeScenarioDetailData.tables.length > 0">
+        <el-divider>数据驱动表</el-divider>
+        <div v-for="table in gaugeScenarioDetailData.tables" :key="table.id" class="gauge-table-item">
+          <div class="table-header">{{ table.table_name }} ({{ table.table_type }})</div>
+          <el-table :data="table.rows_data || []" border size="small" style="width: 100%">
+            <el-table-column v-for="header in (table.headers || [])" :key="header" :prop="header" :label="header" />
+          </el-table>
+        </div>
+      </template>
     </el-dialog>
 
     <!-- 分组管理对话框 -->
@@ -364,102 +412,41 @@
           <el-tag :type="getPriorityType(reqDetailData.priority)" size="small">{{ reqDetailData.priority }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="需求标题" :span="2">{{ reqDetailData.title }}</el-descriptions-item>
-        <el-descriptions-item label="分类">{{ reqDetailData.category || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(reqDetailData.status)">{{ getStatusText(reqDetailData.status) }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="需求描述" :span="2">{{ reqDetailData.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="需求详情" :span="2">{{ reqDetailData.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="验证范围" :span="2">{{ reqDetailData.verification_scope || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="验证准则" :span="2">{{ reqDetailData.verification_criteria || '-' }}</el-descriptions-item>
       </el-descriptions>
 
       <el-divider>车型详情</el-divider>
-      <el-table :data="reqDetailData.vehicle_details || []" border style="width: 100%">
-        <el-table-column prop="vehicle_model_name" label="车型" />
-        <el-table-column prop="feature_support" label="是否支持" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.feature_support ? 'success' : 'info'" size="small">
-              {{ row.feature_support ? '是' : '否' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="function_status" label="功能状态" width="100" />
-        <el-table-column prop="channel_count" label="通道数" width="80" />
-        <el-table-column prop="power_value" label="功率(W)" width="80" />
-      </el-table>
-    </el-dialog>
-
-    <!-- 脚本详情弹窗 -->
-    <el-dialog v-model="scriptDetailVisible" title="脚本详情 (Gauge框架)" width="900px">
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="脚本编号">{{ scriptDetailData.script_code }}</el-descriptions-item>
-        <el-descriptions-item label="版本">{{ scriptDetailData.version }}</el-descriptions-item>
-        <el-descriptions-item label="脚本标题" :span="2">{{ scriptDetailData.title }}</el-descriptions-item>
-        <el-descriptions-item label="脚本路径" :span="2">{{ scriptDetailData.script_path }}</el-descriptions-item>
-      </el-descriptions>
-
-      <el-divider>测试场景</el-divider>
-      <el-table :data="scriptDetailData.scenarios || []" border style="width: 100%">
-        <el-table-column prop="scenario_name" label="场景名称" />
-        <el-table-column prop="scenario_type" label="场景类型" width="100" />
-        <el-table-column prop="spec_file" label="Spec文件" />
-        <el-table-column prop="table_driven" label="表驱动" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.table_driven ? 'success' : 'info'" size="small">
-              {{ row.table_driven ? '是' : '否' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="showScenarioDetail(row)">详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
-
-    <!-- 场景详情弹窗 -->
-    <el-dialog v-model="scenarioDetailVisible" title="场景详情" width="700px">
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="场景名称">{{ scenarioDetailData.scenario_name }}</el-descriptions-item>
-        <el-descriptions-item label="场景类型">{{ scenarioDetailData.scenario_type }}</el-descriptions-item>
-        <el-descriptions-item label="Spec文件" :span="2">{{ scenarioDetailData.spec_file }}</el-descriptions-item>
-        <el-descriptions-item label="执行顺序">{{ scenarioDetailData.execution_order }}</el-descriptions-item>
-        <el-descriptions-item label="超时时间">{{ scenarioDetailData.timeout }}ms</el-descriptions-item>
-      </el-descriptions>
-
-      <template v-if="scenarioDetailData.value_table && Object.keys(scenarioDetailData.value_table).length > 0">
-        <el-divider>取值表</el-divider>
-        <pre class="json-block">{{ JSON.stringify(scenarioDetailData.value_table, null, 2) }}</pre>
-      </template>
-
-      <template v-if="scenarioDetailData.parameters && scenarioDetailData.parameters.length > 0">
-        <el-divider>场景参数</el-divider>
-        <el-table :data="scenarioDetailData.parameters" border style="width: 100%">
-          <el-table-column prop="param_name" label="参数名" />
-          <el-table-column prop="param_value" label="参数值" />
-          <el-table-column prop="param_type" label="类型" width="80" />
-          <el-table-column prop="is_required" label="必填" width="60">
-            <template #default="{ row }">
-              <el-tag :type="row.is_required ? 'danger' : 'info'" size="small">
-                {{ row.is_required ? '是' : '否' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="description" label="说明" show-overflow-tooltip />
-        </el-table>
-      </template>
-
-      <template v-if="scenarioDetailData.data_tables && scenarioDetailData.data_tables.length > 0">
-        <el-divider>数据表</el-divider>
-        <el-table :data="scenarioDetailData.data_tables" border style="width: 100%">
-          <el-table-column prop="row_name" label="行名" />
-          <el-table-column prop="description" label="说明" />
-          <el-table-column label="数据值">
-            <template #default="{ row }">
-              <pre class="json-inline">{{ JSON.stringify(row.data_value, null, 2) }}</pre>
-            </template>
-          </el-table-column>
-        </el-table>
-      </template>
+      <div v-if="groupedReqVehicleDetails.length > 0" class="vehicle-groups">
+        <div v-for="(group, index) in groupedReqVehicleDetails" :key="index" class="vehicle-group-item">
+          <el-table :data="[group]" border style="width: 100%">
+            <el-table-column label="适用车型" min-width="180">
+              <template #default>
+                <div class="vehicle-names">
+                  <el-tag v-for="name in group.vehicle_names" :key="name" size="small" style="margin: 2px;">
+                    {{ name }}
+                  </el-tag>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="适用状态" width="100">
+              <template #default>
+                <el-tag :type="group.feature_support ? 'success' : 'info'" size="small">
+                  {{ group.feature_support ? '适用' : '不适用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="车型差异" min-width="250">
+              <template #default>
+                <span v-if="!group.feature_support" class="not-applicable">不适用</span>
+                <span v-else-if="group.difference_description">{{ group.difference_description }}</span>
+                <span v-else class="no-difference">无</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -467,22 +454,22 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { testCaseApi, testCaseGroupApi, statsApi, requirementApi, testScriptApi, testScenarioApi, canMatrixApi } from '@/api'
+import { testCaseApi, testCaseGroupApi, statsApi, requirementApi, gaugeApi, canMatrixApi } from '@/api'
 import { exportToExcel, statusMap, priorityMap } from '@/utils/export'
 
 const tableData = ref([])
 const groupTree = ref([])
 const requirements = ref([])
-const scripts = ref([])
-const scenarios = ref([])
+const gaugeProjects = ref([])
+const gaugeSpecs = ref([])
+const gaugeScenarios = ref([])
 const canMatrices = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const groupDialogVisible = ref(false)
 const reqDetailVisible = ref(false)
-const scriptDetailVisible = ref(false)
-const scenarioDetailVisible = ref(false)
+const gaugeScenarioDetailVisible = ref(false)
 const dialogTitle = ref('')
 const groupDialogTitle = ref('')
 const formRef = ref(null)
@@ -491,8 +478,7 @@ const editingId = ref(null)
 const groupEditingId = ref(null)
 const detailData = ref({})
 const reqDetailData = ref({})
-const scriptDetailData = ref({})
-const scenarioDetailData = ref({})
+const gaugeScenarioDetailData = ref({})
 
 // 列显示控制
 const columnVisibility = reactive({
@@ -502,7 +488,7 @@ const columnVisibility = reactive({
   vehicles: true,
   level: true,
   test_triple: true,
-  scenario: true,
+  gauge_info: true,
   designer: true,
   design_date: true,
   status: true
@@ -532,7 +518,8 @@ const formData = reactive({
   design_date: '',
   publish_date: '',
   status: 'Draft',
-  scenario_id: '',
+  gauge_scenario_path: [],
+  gauge_scenario_id: '',
   can_matrix_id: ''
 })
 
@@ -556,6 +543,26 @@ const groupFormRules = {
   name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入分组编码', trigger: 'blur' }]
 }
+
+// Gauge场景级联选择器选项
+const gaugeScenarioOptions = computed(() => {
+  return gaugeProjects.value.map(project => ({
+    value: `project_${project.id}`,
+    label: project.name,
+    children: gaugeSpecs.value
+      .filter(spec => spec.project_id === project.id)
+      .map(spec => ({
+        value: `spec_${spec.id}`,
+        label: spec.spec_name,
+        children: gaugeScenarios.value
+          .filter(scenario => scenario.spec_id === spec.id)
+          .map(scenario => ({
+            value: scenario.id,
+            label: scenario.scenario_name
+          }))
+      }))
+  }))
+})
 
 // 根据分组生成用例ID占位符
 const caseCodePlaceholder = computed(() => {
@@ -585,9 +592,17 @@ const handleGroupChange = (groupId) => {
   if (groupId && !editingId.value) {
     const group = findGroupById(groupTree.value, groupId)
     if (group && group.code) {
-      // 自动生成用例ID前缀
       formData.case_code = `SwQT-${group.code}-`
     }
+  }
+}
+
+// Gauge场景变化处理
+const handleGaugeScenarioChange = (value) => {
+  if (value && value.length === 3) {
+    formData.gauge_scenario_id = value[2]
+  } else {
+    formData.gauge_scenario_id = ''
   }
 }
 
@@ -606,6 +621,34 @@ const getStatusText = (status) => {
   return map[status] || status
 }
 
+const getStepType = (type) => {
+  const map = { setup: 'info', action: 'primary', assertion: 'success', teardown: 'warning' }
+  return map[type] || 'info'
+}
+
+const getStepTypeText = (type) => {
+  const map = { setup: '前置', action: '操作', assertion: '断言', teardown: '清理' }
+  return map[type] || type
+}
+
+// 需求车型详情按差异分组
+const groupedReqVehicleDetails = computed(() => {
+  const details = reqDetailData.value.vehicle_details || []
+  const groups = {}
+  details.forEach(d => {
+    const key = `${d.feature_support}_${d.difference_description || ''}`
+    if (!groups[key]) {
+      groups[key] = {
+        feature_support: d.feature_support,
+        difference_description: d.difference_description,
+        vehicle_names: []
+      }
+    }
+    groups[key].vehicle_names.push(d.vehicle_model_name)
+  })
+  return Object.values(groups)
+})
+
 const loadGroupTree = async () => {
   try {
     groupTree.value = await statsApi.getTree('test-case-groups')
@@ -623,21 +666,18 @@ const loadRequirements = async () => {
   }
 }
 
-const loadScripts = async () => {
+const loadGaugeData = async () => {
   try {
-    const res = await testScriptApi.getList({ per_page: 100 })
-    scripts.value = res.items
+    const [projectsRes, specsRes, scenariosRes] = await Promise.all([
+      gaugeApi.getProjects({ per_page: 100 }),
+      gaugeApi.getSpecs({ per_page: 100 }),
+      gaugeApi.getScenarios({ per_page: 100 })
+    ])
+    gaugeProjects.value = projectsRes.items
+    gaugeSpecs.value = specsRes.items
+    gaugeScenarios.value = scenariosRes.items
   } catch (error) {
-    console.error('加载脚本失败:', error)
-  }
-}
-
-const loadScenarios = async () => {
-  try {
-    const res = await testScenarioApi.getList({ per_page: 100 })
-    scenarios.value = res.items
-  } catch (error) {
-    console.error('加载场景失败:', error)
+    console.error('加载Gauge数据失败:', error)
   }
 }
 
@@ -691,7 +731,7 @@ const handleAdd = () => {
     case_name: '', test_purpose: '', level: 'A',
     preconditions: '', test_steps: '', expected_results: '',
     tags: '', designer: '', design_date: '', publish_date: '',
-    status: 'Draft', scenario_id: '', can_matrix_id: ''
+    status: 'Draft', gauge_scenario_path: [], gauge_scenario_id: '', can_matrix_id: ''
   })
   dialogVisible.value = true
 }
@@ -699,6 +739,13 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   dialogTitle.value = '编辑测试用例'
   editingId.value = row.id
+
+  // 构建gauge_scenario_path
+  let gauge_scenario_path = []
+  if (row.gauge_scenario_id) {
+    gauge_scenario_path = [`project_${row.project_id}`, `spec_${row.spec_id}`, row.gauge_scenario_id]
+  }
+
   Object.assign(formData, {
     case_code: row.case_code,
     group_id: row.group_id,
@@ -714,7 +761,8 @@ const handleEdit = (row) => {
     design_date: row.design_date,
     publish_date: row.publish_date,
     status: row.status,
-    scenario_id: row.scenario_id || '',
+    gauge_scenario_path: gauge_scenario_path,
+    gauge_scenario_id: row.gauge_scenario_id || '',
     can_matrix_id: row.can_matrix_id || ''
   })
   dialogVisible.value = true
@@ -732,7 +780,6 @@ const handleDetail = async (row) => {
 const handleSubmit = async () => {
   try {
     await formRef.value.validate()
-    // 验证用例ID格式
     if (!formData.case_code.startsWith('SwQT-')) {
       ElMessage.warning('测试用例ID须以 SwQT- 开头')
       return
@@ -775,12 +822,13 @@ const handleExport = () => {
     { prop: 'preconditions', label: '前置条件', width: 20 },
     { prop: 'test_steps', label: '测试步骤', width: 30 },
     { prop: 'expected_results', label: '预期结果', width: 30 },
-    { prop: 'scenario_name', label: '测试场景', width: 15 },
+    { prop: 'scenario_name', label: 'Gauge场景', width: 15 },
+    { prop: 'project_name', label: 'Gauge项目', width: 15 },
+    { prop: 'spec_name', label: 'Gauge Spec', width: 15 },
     { prop: 'designer', label: '编制人', width: 10 },
     { prop: 'design_date', label: '编制日期', width: 12 },
     { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
   ]
-  // 处理导出数据
   const exportData = tableData.value.map(row => ({
     ...row,
     requirement_codes: row.requirements?.map(r => r.req_code).join(', ') || '-',
@@ -816,30 +864,12 @@ const showRequirementDetail = async (id) => {
   }
 }
 
-const showScriptDetail = async (scriptId) => {
+const showGaugeScenarioDetail = async (id) => {
   try {
-    scriptDetailData.value = await testScriptApi.getDetail(scriptId)
-    scriptDetailVisible.value = true
+    gaugeScenarioDetailData.value = await gaugeApi.getScenarioDetail(id)
+    gaugeScenarioDetailVisible.value = true
   } catch (error) {
-    console.error('获取脚本详情失败:', error)
-  }
-}
-
-const showScenarioDetail = async (row) => {
-  try {
-    scenarioDetailData.value = await testScenarioApi.getDetail(row.id)
-    scenarioDetailVisible.value = true
-  } catch (error) {
-    console.error('获取场景详情失败:', error)
-  }
-}
-
-const showScenarioDetailById = async (id) => {
-  try {
-    scenarioDetailData.value = await testScenarioApi.getDetail(id)
-    scenarioDetailVisible.value = true
-  } catch (error) {
-    console.error('获取场景详情失败:', error)
+    console.error('获取Gauge场景详情失败:', error)
   }
 }
 
@@ -847,7 +877,7 @@ onMounted(() => {
   loadGroupTree()
   loadData()
   loadRequirements()
-  loadScripts()
+  loadGaugeData()
   loadCanMatrices()
 })
 </script>
@@ -906,25 +936,51 @@ onMounted(() => {
   -webkit-box-orient: vertical;
 }
 
-.json-block {
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  padding: 12px;
-  font-family: monospace;
+.gauge-info {
   font-size: 12px;
-  line-height: 1.5;
-  overflow-x: auto;
 }
 
-.json-inline {
-  background-color: #f5f7fa;
-  border-radius: 2px;
-  padding: 4px 8px;
-  font-family: monospace;
+.gauge-path {
+  color: #909399;
+  margin-top: 4px;
   font-size: 11px;
-  line-height: 1.4;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
+}
+
+.path-sep {
+  margin: 0 4px;
+}
+
+.vehicle-groups {
+  margin-top: 10px;
+}
+
+.vehicle-group-item {
+  margin-bottom: 10px;
+}
+
+.vehicle-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.not-applicable {
+  color: #909399;
+  font-style: italic;
+}
+
+.no-difference {
+  color: #67c23a;
+  font-weight: 500;
+}
+
+.gauge-table-item {
+  margin-bottom: 15px;
+}
+
+.table-header {
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #606266;
 }
 </style>

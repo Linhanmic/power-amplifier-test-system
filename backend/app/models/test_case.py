@@ -55,17 +55,21 @@ class TestCase(db.Model):
     design_date = db.Column(db.Date, comment='测试用例编制日期')
     publish_date = db.Column(db.Date, comment='测试用例发布日期')
     status = db.Column(db.String(20), default='Draft', comment='状态')
-    scenario_id = db.Column(db.Integer, db.ForeignKey('test_scenarios.id'), nullable=True, comment='关联场景ID')
+    gauge_scenario_id = db.Column(db.Integer, db.ForeignKey('gauge_scenarios.id'), nullable=True, comment='关联Gauge场景ID')
     can_matrix_id = db.Column(db.Integer, db.ForeignKey('can_matrices.id'), nullable=True, comment='关联CAN矩阵ID')
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     # 关系
-    scenario = db.relationship('TestScenario', backref='test_cases')
     requirements = db.relationship('Requirement', secondary=test_case_requirements, backref='test_cases')
     vehicles = db.relationship('TestCaseVehicle', backref='test_case', lazy='dynamic')
 
     def to_dict(self):
+        # 通过gauge_scenario追溯到spec和project
+        scenario = self.gauge_scenario
+        spec = scenario.spec if scenario else None
+        project = spec.project if spec else None
+
         return {
             'id': self.id,
             'case_code': self.case_code,
@@ -82,13 +86,17 @@ class TestCase(db.Model):
             'design_date': self.design_date.isoformat() if self.design_date else None,
             'publish_date': self.publish_date.isoformat() if self.publish_date else None,
             'status': self.status,
-            'scenario_id': self.scenario_id,
-            'scenario_name': self.scenario.scenario_name if self.scenario else None,
-            'script_id': self.scenario.script_id if self.scenario else None,
-            'script_code': self.scenario.script.script_code if self.scenario and self.scenario.script else None,
-            'script_title': self.scenario.script.title if self.scenario and self.scenario.script else None,
-            'script_path': self.scenario.script.script_path if self.scenario and self.scenario.script else None,
-            'spec_file': self.scenario.spec_file if self.scenario else None,
+            # Gauge关联信息
+            'gauge_scenario_id': self.gauge_scenario_id,
+            'scenario_name': scenario.scenario_name if scenario else None,
+            'spec_id': spec.id if spec else None,
+            'spec_code': spec.spec_code if spec else None,
+            'spec_name': spec.spec_name if spec else None,
+            'spec_file': spec.file_path if spec else None,
+            'project_id': project.id if project else None,
+            'project_name': project.name if project else None,
+            'project_code': project.project_code if project else None,
+            # 其他关联
             'can_matrix_id': self.can_matrix_id,
             'can_matrix_name': self.can_matrix.matrix_name if self.can_matrix else None,
             'requirements': [r.to_dict() for r in self.requirements],

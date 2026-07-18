@@ -25,6 +25,7 @@ from . import vehicle_api
 from . import requirement_api
 from . import test_case_api
 from . import test_script_api
+from . import gauge_api
 from . import can_matrix_api
 from . import speaker_mapping_api
 from . import audio_source_api
