@@ -135,14 +135,10 @@ export const playbackMatrixApi = {
   create: (data) => request.post('/playback-matrices', data),
   update: (id, data) => request.put(`/playback-matrices/${id}`, data),
   delete: (id) => request.delete(`/playback-matrices/${id}`),
-  // 基础矩阵条目
-  addBaseEntry: (data) => request.post('/playback-matrix-base', data),
-  updateBaseEntry: (id, data) => request.put(`/playback-matrix-base/${id}`, data),
-  deleteBaseEntry: (id) => request.delete(`/playback-matrix-base/${id}`),
-  // 条件矩阵
-  addCondition: (data) => request.post('/playback-matrix-conditions', data),
-  updateCondition: (id, data) => request.put(`/playback-matrix-conditions/${id}`, data),
-  deleteCondition: (id) => request.delete(`/playback-matrix-conditions/${id}`)
+  // 矩阵条目
+  createEntry: (data) => request.post('/playback-matrix-entries', data),
+  updateEntry: (id, data) => request.put(`/playback-matrix-entries/${id}`, data),
+  deleteEntry: (id) => request.delete(`/playback-matrix-entries/${id}`)
 }
 
 // 基础矩阵API

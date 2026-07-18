@@ -9,7 +9,7 @@ from app.models.test_script import TestScript, TestScenario, ScenarioParameter, 
 from app.models.can_matrix import CANMatrix, SignalDefinition
 from app.models.speaker_mapping import SpeakerChannelMapping
 from app.models.audio_source import A2BSlot, AudioSourceType, AudioSourceSlotMapping
-from app.models.playback_matrix import PlaybackMatrix, PlaybackMatrixBase, PlaybackMatrixCondition
+from app.models.playback_matrix import PlaybackMatrix, PlaybackMatrixEntry
 
 
 def init_mock_data():
@@ -400,51 +400,53 @@ def init_mock_data():
         # 19. 播放矩阵
         playback_matrices = [
             PlaybackMatrix(vehicle_config_id=vehicle_configs[0].id, matrix_name='迈腾B9豪华版播放矩阵',
-                          matrix_type='base', description='迈腾B9豪华版基础播放配置'),
+                          description='迈腾B9豪华版播放矩阵配置'),
             PlaybackMatrix(vehicle_config_id=vehicle_configs[3].id, matrix_name='A6L豪华型播放矩阵',
-                          matrix_type='base', description='A6L豪华型基础播放配置'),
+                          description='A6L豪华型播放矩阵配置'),
         ]
         db.session.add_all(playback_matrices)
         db.session.flush()
         print(f"✓ 创建播放矩阵: {len(playback_matrices)}个")
 
-        # 20. 基础矩阵
-        base_matrices = [
-            PlaybackMatrixBase(matrix_id=playback_matrices[0].id, slot_id=a2b_slots[0].id,
-                              audio_source_id=audio_sources[0].id, is_enabled=True, channel_count=2, volume_level=50),
-            PlaybackMatrixBase(matrix_id=playback_matrices[0].id, slot_id=a2b_slots[0].id,
-                              audio_source_id=audio_sources[1].id, is_enabled=True, channel_count=2, volume_level=50),
-            PlaybackMatrixBase(matrix_id=playback_matrices[0].id, slot_id=a2b_slots[1].id,
-                              audio_source_id=audio_sources[2].id, is_enabled=True, channel_count=2, volume_level=40),
-            PlaybackMatrixBase(matrix_id=playback_matrices[1].id, slot_id=a2b_slots[0].id,
-                              audio_source_id=audio_sources[0].id, is_enabled=True, channel_count=4, volume_level=60),
-        ]
-        db.session.add_all(base_matrices)
-        db.session.flush()
-        print(f"✓ 创建基础矩阵: {len(base_matrices)}个")
+        # 20. 播放矩阵条目
+        speaker_config_1 = json.dumps({
+            '左前低音': '●', '左前中音': '●', '左前高音': '●', '中置': '●',
+            '右前低音': '●', '右前中音': '●', '右前高音': '●',
+            '左后低音': '●', '左后高音': '●', '右后低音': '●', '右后高音': '●',
+            '重低音': '●', '左环绕': '●', '右环绕': '●'
+        }, ensure_ascii=False)
 
-        # 21. 条件矩阵
-        conditions = [
-            PlaybackMatrixCondition(matrix_id=playback_matrices[0].id, condition_name='蓝牙音乐播放',
-                                   condition_type='source',
-                                   condition_value=json.dumps({'source': 'BT_MUSIC'}, ensure_ascii=False),
-                                   playback_config=json.dumps({
-                                       'slot_0': {'enabled': True, 'volume': 50, 'channels': ['FL', 'FR', 'RL', 'RR']},
-                                       'slot_1': {'enabled': False}
-                                   }, ensure_ascii=False),
-                                   description='蓝牙音乐播放配置'),
-            PlaybackMatrixCondition(matrix_id=playback_matrices[0].id, condition_name='导航语音播放',
-                                   condition_type='priority',
-                                   condition_value=json.dumps({'source': 'NAV_VOICE', 'priority': 'high'}, ensure_ascii=False),
-                                   playback_config=json.dumps({
-                                       'slot_0': {'enabled': True, 'volume': 70, 'channels': ['FL', 'FR']},
-                                       'slot_1': {'enabled': False}
-                                   }, ensure_ascii=False),
-                                   description='导航语音优先播放配置'),
+        speaker_config_2 = json.dumps({
+            '左前低音': '●', '左前中音': '●', '左前高音': '●',
+            '右前低音': '●', '右前中音': '●', '右前高音': '●'
+        }, ensure_ascii=False)
+
+        speaker_config_3 = json.dumps({
+            '左前低音': '●', '左前高音': '●', '右前低音': '●', '右前高音': '●'
+        }, ensure_ascii=False)
+
+        matrix_entries = [
+            # 迈腾B9播放矩阵条目
+            PlaybackMatrixEntry(matrix_id=playback_matrices[0].id, audio_source='媒体立体声',
+                               a2b_channel='SLOT 1-SLOT 2', playback_position='全车',
+                               headrest_mode='关闭', speaker_channels=speaker_config_1, sort_order=1),
+            PlaybackMatrixEntry(matrix_id=playback_matrices[0].id, audio_source='杜比音源',
+                               a2b_channel='SLOT 1', playback_position='Music_L（主驾媒体音左）',
+                               headrest_mode='不判断头枕模式', speaker_channels=speaker_config_2, sort_order=2),
+            PlaybackMatrixEntry(matrix_id=playback_matrices[0].id, audio_source='导航语音',
+                               a2b_channel='SLOT 3', playback_position='全车',
+                               headrest_mode='关闭', speaker_channels=speaker_config_1, sort_order=3),
+            # A6L播放矩阵条目
+            PlaybackMatrixEntry(matrix_id=playback_matrices[1].id, audio_source='媒体立体声',
+                               a2b_channel='SLOT 1-SLOT 2', playback_position='全车',
+                               headrest_mode='关闭', speaker_channels=speaker_config_1, sort_order=1),
+            PlaybackMatrixEntry(matrix_id=playback_matrices[1].id, audio_source='杜比音源',
+                               a2b_channel='SLOT 1', playback_position='Music_L（主驾媒体音左）',
+                               headrest_mode='头枕环绕', speaker_channels=speaker_config_3, sort_order=2),
         ]
-        db.session.add_all(conditions)
+        db.session.add_all(matrix_entries)
         db.session.flush()
-        print(f"✓ 创建条件矩阵: {len(conditions)}个")
+        print(f"✓ 创建播放矩阵条目: {len(matrix_entries)}个")
 
         # 提交所有数据
         db.session.commit()
@@ -470,8 +472,7 @@ def init_mock_data():
         print(f"  - 测试用例: {len(test_cases)}个")
         print(f"  - 测试用例车型关联: {len(test_case_vehicles)}个")
         print(f"  - 播放矩阵: {len(playback_matrices)}个")
-        print(f"  - 基础矩阵: {len(base_matrices)}个")
-        print(f"  - 条件矩阵: {len(conditions)}个")
+        print(f"  - 播放矩阵条目: {len(matrix_entries)}个")
 
 
 if __name__ == '__main__':

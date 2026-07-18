@@ -1,9 +1,8 @@
-import json
 from flask import request
 from flask_restful import Resource
 from . import api
 from ..models import db
-from ..models.playback_matrix import PlaybackMatrix, PlaybackMatrixBase, PlaybackMatrixCondition
+from ..models.playback_matrix import PlaybackMatrix, PlaybackMatrixEntry
 
 
 class PlaybackMatrixListAPI(Resource):
@@ -12,14 +11,14 @@ class PlaybackMatrixListAPI(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         vehicle_config_id = request.args.get('vehicle_config_id', type=int)
-        matrix_type = request.args.get('matrix_type')
-        status = request.args.get('status')
+        keyword = request.args.get('keyword', '')
+        status = request.args.get('status', '')
 
         query = PlaybackMatrix.query
         if vehicle_config_id:
             query = query.filter_by(vehicle_config_id=vehicle_config_id)
-        if matrix_type:
-            query = query.filter_by(matrix_type=matrix_type)
+        if keyword:
+            query = query.filter(PlaybackMatrix.matrix_name.contains(keyword))
         if status:
             query = query.filter_by(status=status)
 
@@ -45,25 +44,37 @@ class PlaybackMatrixListAPI(Resource):
         matrix = PlaybackMatrix(
             vehicle_config_id=data['vehicle_config_id'],
             matrix_name=data['matrix_name'],
-            matrix_type=data.get('matrix_type', 'base'),
             description=data.get('description'),
             status=data.get('status', 'active'),
             version=data.get('version', '1.0'),
             created_by=data.get('created_by')
         )
         db.session.add(matrix)
+        db.session.flush()
+
+        # 添加条目
+        entries = data.get('entries', [])
+        for i, entry_data in enumerate(entries):
+            entry = PlaybackMatrixEntry(
+                matrix_id=matrix.id,
+                audio_source=entry_data['audio_source'],
+                a2b_channel=entry_data.get('a2b_channel'),
+                playback_position=entry_data.get('playback_position'),
+                headrest_mode=entry_data.get('headrest_mode'),
+                speaker_channels=entry_data.get('speaker_channels'),
+                sort_order=i + 1
+            )
+            db.session.add(entry)
+
         db.session.commit()
-        return matrix.to_dict(), 201
+        return matrix.to_detail_dict(), 201
 
 
 class PlaybackMatrixAPI(Resource):
     def get(self, matrix_id):
         """获取单个播放矩阵"""
         matrix = PlaybackMatrix.query.get_or_404(matrix_id)
-        result = matrix.to_dict()
-        result['base_entries'] = [b.to_dict() for b in matrix.base_matrices]
-        result['conditions'] = [c.to_dict() for c in matrix.conditions]
-        return result
+        return matrix.to_detail_dict()
 
     def put(self, matrix_id):
         """更新播放矩阵"""
@@ -72,8 +83,6 @@ class PlaybackMatrixAPI(Resource):
 
         if data.get('matrix_name'):
             matrix.matrix_name = data['matrix_name']
-        if 'matrix_type' in data:
-            matrix.matrix_type = data['matrix_type']
         if 'description' in data:
             matrix.description = data['description']
         if 'status' in data:
@@ -81,151 +90,93 @@ class PlaybackMatrixAPI(Resource):
         if 'version' in data:
             matrix.version = data['version']
 
+        # 更新条目
+        if 'entries' in data:
+            # 删除旧条目
+            PlaybackMatrixEntry.query.filter_by(matrix_id=matrix_id).delete()
+            # 添加新条目
+            for i, entry_data in enumerate(data['entries']):
+                entry = PlaybackMatrixEntry(
+                    matrix_id=matrix_id,
+                    audio_source=entry_data['audio_source'],
+                    a2b_channel=entry_data.get('a2b_channel'),
+                    playback_position=entry_data.get('playback_position'),
+                    headrest_mode=entry_data.get('headrest_mode'),
+                    speaker_channels=entry_data.get('speaker_channels'),
+                    sort_order=i + 1
+                )
+                db.session.add(entry)
+
         db.session.commit()
-        return matrix.to_dict()
+        return matrix.to_detail_dict()
 
     def delete(self, matrix_id):
         """删除播放矩阵"""
         matrix = PlaybackMatrix.query.get_or_404(matrix_id)
-        PlaybackMatrixBase.query.filter_by(matrix_id=matrix_id).delete()
-        PlaybackMatrixCondition.query.filter_by(matrix_id=matrix_id).delete()
+        PlaybackMatrixEntry.query.filter_by(matrix_id=matrix_id).delete()
         db.session.delete(matrix)
         db.session.commit()
         return {'message': '删除成功'}
 
 
-class PlaybackMatrixBaseListAPI(Resource):
-    def get(self):
-        """获取基础矩阵列表"""
-        matrix_id = request.args.get('matrix_id', type=int)
-        if not matrix_id:
-            return {'error': 'matrix_id必填'}, 400
-
-        entries = PlaybackMatrixBase.query.filter_by(matrix_id=matrix_id).all()
-        return [e.to_dict() for e in entries]
-
+class PlaybackMatrixEntryAPI(Resource):
     def post(self):
-        """创建基础矩阵条目"""
+        """创建条目"""
         data = request.get_json()
-        required_fields = ['matrix_id', 'slot_id', 'audio_source_id']
+        required_fields = ['matrix_id', 'audio_source']
         for field in required_fields:
             if not data.get(field):
                 return {'error': f'{field}必填'}, 400
 
-        entry = PlaybackMatrixBase(
+        # 获取当前最大排序
+        max_order = db.session.query(db.func.max(PlaybackMatrixEntry.sort_order)).filter_by(
+            matrix_id=data['matrix_id']).scalar() or 0
+
+        entry = PlaybackMatrixEntry(
             matrix_id=data['matrix_id'],
-            slot_id=data['slot_id'],
-            audio_source_id=data['audio_source_id'],
-            is_enabled=data.get('is_enabled', True),
-            channel_count=data.get('channel_count', 2),
-            volume_level=data.get('volume_level', 50),
-            remark=data.get('remark')
+            audio_source=data['audio_source'],
+            a2b_channel=data.get('a2b_channel'),
+            playback_position=data.get('playback_position'),
+            headrest_mode=data.get('headrest_mode'),
+            speaker_channels=data.get('speaker_channels'),
+            sort_order=data.get('sort_order', max_order + 1)
         )
         db.session.add(entry)
         db.session.commit()
         return entry.to_dict(), 201
 
-
-class PlaybackMatrixBaseAPI(Resource):
     def put(self, entry_id):
-        """更新基础矩阵条目"""
-        entry = PlaybackMatrixBase.query.get_or_404(entry_id)
+        """更新条目"""
+        entry = PlaybackMatrixEntry.query.get_or_404(entry_id)
         data = request.get_json()
 
-        if data.get('slot_id'):
-            entry.slot_id = data['slot_id']
-        if data.get('audio_source_id'):
-            entry.audio_source_id = data['audio_source_id']
-        if 'is_enabled' in data:
-            entry.is_enabled = data['is_enabled']
-        if 'channel_count' in data:
-            entry.channel_count = data['channel_count']
-        if 'volume_level' in data:
-            entry.volume_level = data['volume_level']
-        if 'remark' in data:
-            entry.remark = data['remark']
+        if 'audio_source' in data:
+            entry.audio_source = data['audio_source']
+        if 'a2b_channel' in data:
+            entry.a2b_channel = data['a2b_channel']
+        if 'playback_position' in data:
+            entry.playback_position = data['playback_position']
+        if 'headrest_mode' in data:
+            entry.headrest_mode = data['headrest_mode']
+        if 'speaker_channels' in data:
+            entry.speaker_channels = data['speaker_channels']
+        if 'sort_order' in data:
+            entry.sort_order = data['sort_order']
+        if 'status' in data:
+            entry.status = data['status']
 
         db.session.commit()
         return entry.to_dict()
 
     def delete(self, entry_id):
-        """删除基础矩阵条目"""
-        entry = PlaybackMatrixBase.query.get_or_404(entry_id)
+        """删除条目"""
+        entry = PlaybackMatrixEntry.query.get_or_404(entry_id)
         db.session.delete(entry)
         db.session.commit()
         return {'message': '删除成功'}
 
 
-class PlaybackMatrixConditionListAPI(Resource):
-    def get(self):
-        """获取条件矩阵列表"""
-        matrix_id = request.args.get('matrix_id', type=int)
-        if not matrix_id:
-            return {'error': 'matrix_id必填'}, 400
-
-        conditions = PlaybackMatrixCondition.query.filter_by(matrix_id=matrix_id).all()
-        return [c.to_dict() for c in conditions]
-
-    def post(self):
-        """创建条件矩阵"""
-        data = request.get_json()
-        required_fields = ['matrix_id', 'condition_name', 'playback_config']
-        for field in required_fields:
-            if not data.get(field):
-                return {'error': f'{field}必填'}, 400
-
-        condition = PlaybackMatrixCondition(
-            matrix_id=data['matrix_id'],
-            condition_name=data['condition_name'],
-            condition_type=data.get('condition_type'),
-            condition_value=json.dumps(data.get('condition_value', {}), ensure_ascii=False),
-            playback_config=json.dumps(data['playback_config'], ensure_ascii=False),
-            description=data.get('description'),
-            is_active=data.get('is_active', True)
-        )
-        db.session.add(condition)
-        db.session.commit()
-        return condition.to_dict(), 201
-
-
-class PlaybackMatrixConditionAPI(Resource):
-    def get(self, condition_id):
-        """获取单个条件矩阵"""
-        condition = PlaybackMatrixCondition.query.get_or_404(condition_id)
-        return condition.to_dict()
-
-    def put(self, condition_id):
-        """更新条件矩阵"""
-        condition = PlaybackMatrixCondition.query.get_or_404(condition_id)
-        data = request.get_json()
-
-        if data.get('condition_name'):
-            condition.condition_name = data['condition_name']
-        if 'condition_type' in data:
-            condition.condition_type = data['condition_type']
-        if 'condition_value' in data:
-            condition.condition_value = json.dumps(data['condition_value'], ensure_ascii=False)
-        if 'playback_config' in data:
-            condition.playback_config = json.dumps(data['playback_config'], ensure_ascii=False)
-        if 'description' in data:
-            condition.description = data['description']
-        if 'is_active' in data:
-            condition.is_active = data['is_active']
-
-        db.session.commit()
-        return condition.to_dict()
-
-    def delete(self, condition_id):
-        """删除条件矩阵"""
-        condition = PlaybackMatrixCondition.query.get_or_404(condition_id)
-        db.session.delete(condition)
-        db.session.commit()
-        return {'message': '删除成功'}
-
-
+# 注册路由
 api.add_resource(PlaybackMatrixListAPI, '/playback-matrices')
 api.add_resource(PlaybackMatrixAPI, '/playback-matrices/<int:matrix_id>')
-api.add_resource(PlaybackMatrixBaseListAPI, '/playback-matrix-base')
-api.add_resource(PlaybackMatrixBaseAPI, '/playback-matrix-base/<int:entry_id>')
-api.add_resource(PlaybackMatrixConditionListAPI, '/playback-matrix-conditions')
-api.add_resource(PlaybackMatrixConditionAPI, '/playback-matrix-conditions/<int:condition_id>')
+api.add_resource(PlaybackMatrixEntryAPI, '/playback-matrix-entries', '/playback-matrix-entries/<int:entry_id>')

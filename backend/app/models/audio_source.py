@@ -17,7 +17,6 @@ class A2BSlot(db.Model):
 
     # 关系
     audio_mappings = db.relationship('AudioSourceSlotMapping', back_populates='a2b_slot', lazy='dynamic')
-    matrix_entries = db.relationship('PlaybackMatrixBase', back_populates='slot', lazy='dynamic')
 
     def to_dict(self):
         return {
@@ -44,7 +43,6 @@ class AudioSourceType(db.Model):
 
     # 关系
     slot_mappings = db.relationship('AudioSourceSlotMapping', back_populates='audio_source', lazy='dynamic')
-    matrix_entries = db.relationship('PlaybackMatrixBase', back_populates='audio_source', lazy='dynamic')
 
     def to_dict(self):
         return {

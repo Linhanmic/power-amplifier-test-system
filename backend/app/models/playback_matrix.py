@@ -4,12 +4,12 @@ from . import db
 
 
 class PlaybackMatrix(db.Model):
+    """播放矩阵"""
     __tablename__ = 'playback_matrices'
 
     id = db.Column(db.Integer, primary_key=True)
     vehicle_config_id = db.Column(db.Integer, db.ForeignKey('vehicle_configs.id'), nullable=False)
     matrix_name = db.Column(db.String(100), nullable=False, comment='矩阵名称')
-    matrix_type = db.Column(db.String(20), default='base', comment='矩阵类型: base/condition')
     description = db.Column(db.Text, comment='描述')
     status = db.Column(db.String(20), default='active', comment='状态')
     version = db.Column(db.String(20), default='1.0', comment='版本')
@@ -19,8 +19,8 @@ class PlaybackMatrix(db.Model):
 
     # 关系
     vehicle_config = db.relationship('VehicleConfig', back_populates='playback_matrices')
-    base_matrices = db.relationship('PlaybackMatrixBase', back_populates='playback_matrix', lazy='dynamic')
-    conditions = db.relationship('PlaybackMatrixCondition', back_populates='playback_matrix', lazy='dynamic')
+    entries = db.relationship('PlaybackMatrixEntry', backref='matrix', lazy='dynamic',
+                             order_by='PlaybackMatrixEntry.sort_order')
 
     def to_dict(self):
         return {
@@ -28,99 +28,67 @@ class PlaybackMatrix(db.Model):
             'vehicle_config_id': self.vehicle_config_id,
             'vehicle_config_name': self.vehicle_config.config_name if self.vehicle_config else None,
             'matrix_name': self.matrix_name,
-            'matrix_type': self.matrix_type,
             'description': self.description,
             'status': self.status,
             'version': self.version,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'base_count': self.base_matrices.count(),
-            'condition_count': self.conditions.count()
+            'entry_count': self.entries.count()
         }
 
+    def to_detail_dict(self):
+        """包含条目的详细信息"""
+        result = self.to_dict()
+        result['entries'] = [e.to_dict() for e in self.entries]
+        return result
 
-class PlaybackMatrixBase(db.Model):
-    __tablename__ = 'playback_matrix_base'
+
+class PlaybackMatrixEntry(db.Model):
+    """播放矩阵条目"""
+    __tablename__ = 'playback_matrix_entries'
 
     id = db.Column(db.Integer, primary_key=True)
     matrix_id = db.Column(db.Integer, db.ForeignKey('playback_matrices.id'), nullable=False)
-    slot_id = db.Column(db.Integer, db.ForeignKey('a2b_slots.id'), nullable=False)
-    audio_source_id = db.Column(db.Integer, db.ForeignKey('audio_source_types.id'), nullable=False)
-    is_enabled = db.Column(db.Boolean, default=True, comment='是否启用')
-    channel_count = db.Column(db.Integer, default=2, comment='通道数')
-    volume_level = db.Column(db.Integer, default=50, comment='音量等级')
+
+    # 基本信息
+    audio_source = db.Column(db.String(50), nullable=False, comment='音源类型')
+    a2b_channel = db.Column(db.String(50), comment='A2B通道')
+    playback_position = db.Column(db.String(100), comment='播出方位')
+    headrest_mode = db.Column(db.String(20), comment='头枕模式: 关闭/头枕环绕/驾享模式/独享模式/不判断头枕模式')
+
+    # 扬声器通道配置 (JSON格式存储)
+    speaker_channels = db.Column(db.Text, comment='扬声器通道配置(JSON)')
+
+    # 排序和状态
+    sort_order = db.Column(db.Integer, default=0, comment='排序')
+    status = db.Column(db.String(20), default='active', comment='状态')
     remark = db.Column(db.Text, comment='备注')
-    created_at = db.Column(db.DateTime, default=datetime.now)
-
-    # 关系
-    playback_matrix = db.relationship('PlaybackMatrix', back_populates='base_matrices')
-    slot = db.relationship('A2BSlot', back_populates='matrix_entries')
-    audio_source = db.relationship('AudioSourceType', back_populates='matrix_entries')
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'matrix_id': self.matrix_id,
-            'slot_id': self.slot_id,
-            'slot_name': self.slot.slot_name if self.slot else None,
-            'audio_source_id': self.audio_source_id,
-            'audio_source_name': self.audio_source.source_name if self.audio_source else None,
-            'is_enabled': self.is_enabled,
-            'channel_count': self.channel_count,
-            'volume_level': self.volume_level,
-            'remark': self.remark,
-            'created_at': self.created_at.isoformat() if self.created_at else None
-        }
-
-
-class PlaybackMatrixCondition(db.Model):
-    __tablename__ = 'playback_matrix_conditions'
-
-    id = db.Column(db.Integer, primary_key=True)
-    matrix_id = db.Column(db.Integer, db.ForeignKey('playback_matrices.id'), nullable=False)
-    condition_name = db.Column(db.String(100), nullable=False, comment='条件名称')
-    condition_type = db.Column(db.String(20), comment='条件类型')
-    condition_value = db.Column(db.Text, comment='条件值(JSON)')
-    playback_config = db.Column(db.Text, nullable=False, comment='播放配置(JSON)')
-    description = db.Column(db.Text, comment='描述')
-    is_active = db.Column(db.Boolean, default=True, comment='是否激活')
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
-    # 关系
-    playback_matrix = db.relationship('PlaybackMatrix', back_populates='conditions')
-
     @property
-    def condition_value_dict(self):
-        if self.condition_value:
-            return json.loads(self.condition_value)
+    def speaker_channels_dict(self):
+        if self.speaker_channels:
+            return json.loads(self.speaker_channels)
         return {}
 
-    @condition_value_dict.setter
-    def condition_value_dict(self, value):
-        self.condition_value = json.dumps(value, ensure_ascii=False)
-
-    @property
-    def playback_config_dict(self):
-        if self.playback_config:
-            return json.loads(self.playback_config)
-        return {}
-
-    @playback_config_dict.setter
-    def playback_config_dict(self, value):
-        self.playback_config = json.dumps(value, ensure_ascii=False)
+    @speaker_channels_dict.setter
+    def speaker_channels_dict(self, value):
+        self.speaker_channels = json.dumps(value, ensure_ascii=False)
 
     def to_dict(self):
         return {
             'id': self.id,
             'matrix_id': self.matrix_id,
-            'condition_name': self.condition_name,
-            'condition_type': self.condition_type,
-            'condition_value': self.condition_value_dict,
-            'playback_config': self.playback_config_dict,
-            'description': self.description,
-            'is_active': self.is_active,
+            'audio_source': self.audio_source,
+            'a2b_channel': self.a2b_channel,
+            'playback_position': self.playback_position,
+            'headrest_mode': self.headrest_mode,
+            'speaker_channels': self.speaker_channels_dict,
+            'sort_order': self.sort_order,
+            'status': self.status,
+            'remark': self.remark,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

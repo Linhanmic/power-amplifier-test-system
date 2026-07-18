@@ -16,6 +16,6 @@ def init_db(app):
         from .can_matrix import CANMatrix, SignalDefinition
         from .speaker_mapping import SpeakerChannelMapping
         from .audio_source import A2BSlot, AudioSourceType, AudioSourceSlotMapping
-        from .playback_matrix import PlaybackMatrix, PlaybackMatrixBase, PlaybackMatrixCondition
+        from .playback_matrix import PlaybackMatrix, PlaybackMatrixEntry
 
         db.create_all()
