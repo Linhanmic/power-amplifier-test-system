@@ -80,7 +80,14 @@ class GaugeSpec(db.Model):
             'remark': self.remark,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'scenario_count': self.scenarios.count()
+            'scenario_count': self.scenarios.count(),
+            'scenarios': [{
+                'id': s.id,
+                'scenario_name': s.scenario_name,
+                'scenario_type': s.scenario_type,
+                'execution_order': s.execution_order,
+                'status': s.status
+            } for s in self.scenarios.order_by(GaugeScenario.execution_order)]
         }
 
 
