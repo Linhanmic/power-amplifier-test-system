@@ -320,7 +320,11 @@
         <el-descriptions-item label="项目编号">{{ detailData.project_code || '-' }}</el-descriptions-item>
         <el-descriptions-item label="Spec名称">{{ detailData.spec_name || '-' }}</el-descriptions-item>
         <el-descriptions-item label="Spec编号">{{ detailData.spec_code || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="场景名称">{{ detailData.scenario_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="场景名称">
+          <el-button type="primary" link @click="showGaugeScenarioDetail(detailData.gauge_scenario_id)">
+            {{ detailData.scenario_name || '-' }}
+          </el-button>
+        </el-descriptions-item>
         <el-descriptions-item label="Spec文件">{{ detailData.spec_file || '-' }}</el-descriptions-item>
       </el-descriptions>
       <el-empty v-else description="未关联Gauge场景" :image-size="60" />
