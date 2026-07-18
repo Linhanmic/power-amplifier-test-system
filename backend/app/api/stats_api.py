@@ -17,7 +17,7 @@ class StatsOverviewAPI(Resource):
             'vehicle_models': VehicleModel.query.filter_by(status='active').count(),
             'vehicle_configs': VehicleConfig.query.filter_by(status='active').count(),
             'requirements': Requirement.query.count(),
-            'test_case_groups': TestCaseGroup.query.filter_by(status='active').count(),
+            'test_case_groups': TestCaseGroup.query.count(),
             'test_cases': TestCase.query.count(),
             'test_scripts': TestScript.query.count(),
             'can_matrices': CANMatrix.query.filter_by(status='active').count(),
@@ -29,9 +29,9 @@ class StatsOverviewAPI(Resource):
                 'rejected': Requirement.query.filter_by(status='rejected').count()
             },
             'test_case_status': {
-                'draft': TestCase.query.filter_by(status='draft').count(),
-                'ready': TestCase.query.filter_by(status='ready').count(),
-                'deprecated': TestCase.query.filter_by(status='deprecated').count()
+                'Draft': TestCase.query.filter_by(status='Draft').count(),
+                'Accepted': TestCase.query.filter_by(status='Accepted').count(),
+                'Not-Accepted': TestCase.query.filter_by(status='Not-Accepted').count()
             }
         }
 
@@ -48,7 +48,7 @@ class TreeDataAPI(Resource):
 
     def _get_test_case_group_tree(self):
         """获取测试用例分组树"""
-        groups = TestCaseGroup.query.filter_by(parent_id=None, status='active').order_by(
+        groups = TestCaseGroup.query.filter_by(parent_id=None).order_by(
             TestCaseGroup.sort_order
         ).all()
         return [self._build_group_tree(g) for g in groups]
@@ -60,7 +60,7 @@ class TreeDataAPI(Resource):
             'label': group.name,
             'children': []
         }
-        for child in group.children.filter_by(status='active').order_by(TestCaseGroup.sort_order):
+        for child in group.children.order_by(TestCaseGroup.sort_order):
             result['children'].append(self._build_group_tree(child))
         return result
 
