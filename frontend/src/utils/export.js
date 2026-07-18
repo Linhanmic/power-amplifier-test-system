@@ -62,6 +62,9 @@ export function formatDateTime(dateStr) {
  * 状态文本映射
  */
 export const statusMap = {
+  Draft: '草稿',
+  Accepted: '已接受',
+  'Not-Accepted': '不接受',
   draft: '草稿',
   reviewing: '评审中',
   approved: '已通过',

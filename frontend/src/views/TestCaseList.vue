@@ -38,13 +38,13 @@
 
           <el-form :inline="true" class="search-form">
             <el-form-item label="关键词">
-              <el-input v-model="searchParams.keyword" placeholder="用例编号/标题" clearable @keyup.enter="loadData" />
+              <el-input v-model="searchParams.keyword" placeholder="用例编号/名称" clearable @keyup.enter="loadData" />
             </el-form-item>
             <el-form-item label="状态">
               <el-select v-model="searchParams.status" placeholder="全部" clearable>
-                <el-option label="草稿" value="draft" />
-                <el-option label="就绪" value="ready" />
-                <el-option label="已废弃" value="deprecated" />
+                <el-option label="草稿" value="Draft" />
+                <el-option label="已接受" value="Accepted" />
+                <el-option label="不接受" value="Not-Accepted" />
               </el-select>
             </el-form-item>
             <el-form-item label="优先级">
@@ -53,6 +53,7 @@
                 <el-option label="A" value="A" />
                 <el-option label="B" value="B" />
                 <el-option label="C" value="C" />
+                <el-option label="D" value="D" />
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -62,15 +63,8 @@
           </el-form>
 
           <el-table :data="tableData" border style="width: 100%">
-            <el-table-column prop="case_code" label="用例编号" width="120" />
-            <el-table-column prop="title" label="用例标题" show-overflow-tooltip />
-            <el-table-column prop="group_name" label="所属分组" width="120" />
-            <el-table-column prop="level" label="优先级" width="80">
-              <template #default="{ row }">
-                <el-tag :type="getPriorityType(row.level)" size="small">{{ row.level }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="requirement_code" label="关联需求" width="120">
+            <el-table-column prop="case_code" label="测试用例ID" width="120" />
+            <el-table-column prop="requirement_code" label="上游需求ID" width="120">
               <template #default="{ row }">
                 <el-button v-if="row.requirement_id" type="primary" link @click="showRequirementDetail(row.requirement_id)">
                   {{ row.requirement_code }}
@@ -78,6 +72,13 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
+            <el-table-column prop="case_name" label="测试用例名称" show-overflow-tooltip />
+            <el-table-column prop="level" label="优先级" width="80">
+              <template #default="{ row }">
+                <el-tag :type="getPriorityType(row.level)" size="small">{{ row.level }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="designer" label="设计者" width="100" />
             <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
@@ -107,10 +108,10 @@
     </el-row>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="用例编号" prop="case_code">
+            <el-form-item label="测试用例ID" prop="case_code">
               <el-input v-model="formData.case_code" placeholder="请输入用例编号" />
             </el-form-item>
           </el-col>
@@ -125,26 +126,35 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="用例标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入用例标题" />
+        <el-form-item label="上游需求ID">
+          <el-select v-model="formData.requirement_id" placeholder="请选择需求" clearable filterable>
+            <el-option v-for="r in requirements" :key="r.id" :label="`${r.req_code} - ${r.title}`" :value="r.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="测试用例名称" prop="case_name">
+          <el-input v-model="formData.case_name" placeholder="请输入用例名称" />
+        </el-form-item>
+        <el-form-item label="测试目的">
+          <el-input v-model="formData.test_purpose" type="textarea" :rows="2" placeholder="请输入测试目的" />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="优先级">
               <el-select v-model="formData.level" placeholder="请选择优先级">
-                <el-option label="S" value="S" />
-                <el-option label="A" value="A" />
-                <el-option label="B" value="B" />
-                <el-option label="C" value="C" />
+                <el-option label="S - 冒烟测试项" value="S" />
+                <el-option label="A - 功能定义要求有效项" value="A" />
+                <el-option label="B - 功能无效项" value="B" />
+                <el-option label="C - 功能交叉项" value="C" />
+                <el-option label="D - 不存在工况项" value="D" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="状态">
               <el-select v-model="formData.status" placeholder="请选择状态">
-                <el-option label="草稿" value="draft" />
-                <el-option label="就绪" value="ready" />
-                <el-option label="已废弃" value="deprecated" />
+                <el-option label="草稿" value="Draft" />
+                <el-option label="已接受" value="Accepted" />
+                <el-option label="不接受" value="Not-Accepted" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -158,10 +168,23 @@
         <el-form-item label="预期结果" prop="expected_results">
           <el-input v-model="formData.expected_results" type="textarea" :rows="4" placeholder="请输入预期结果" />
         </el-form-item>
-        <el-form-item label="关联需求">
-          <el-select v-model="formData.requirement_id" placeholder="请选择需求" clearable filterable>
-            <el-option v-for="r in requirements" :key="r.id" :label="`${r.req_code} - ${r.title}`" :value="r.id" />
-          </el-select>
+        <el-form-item label="标记">
+          <el-input v-model="formData.tags" placeholder="请输入标记，多个用逗号分隔" />
+        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="测试用例设计者">
+              <el-input v-model="formData.designer" placeholder="请输入设计者" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="编制日期">
+              <el-date-picker v-model="formData.design_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="发布日期">
+          <el-date-picker v-model="formData.publish_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" />
         </el-form-item>
         <el-form-item label="关联脚本">
           <el-select v-model="formData.script_id" placeholder="请选择脚本" clearable filterable>
@@ -183,15 +206,22 @@
     <!-- 详情对话框 -->
     <el-dialog v-model="detailVisible" title="测试用例详情" width="900px">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="用例编号">{{ detailData.case_code }}</el-descriptions-item>
+        <el-descriptions-item label="测试用例ID">{{ detailData.case_code }}</el-descriptions-item>
         <el-descriptions-item label="所属分组">{{ detailData.group_name }}</el-descriptions-item>
-        <el-descriptions-item label="用例标题" :span="2">{{ detailData.title }}</el-descriptions-item>
+        <el-descriptions-item label="测试用例名称" :span="2">{{ detailData.case_name }}</el-descriptions-item>
+        <el-descriptions-item label="上游需求ID">
+          <el-button v-if="detailData.requirement_id" type="primary" link @click="showRequirementDetail(detailData.requirement_id)">
+            {{ detailData.requirement_code }}
+          </el-button>
+          <span v-else>-</span>
+        </el-descriptions-item>
         <el-descriptions-item label="优先级">
           <el-tag :type="getPriorityType(detailData.level)" size="small">{{ detailData.level }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getStatusType(detailData.status)">{{ getStatusText(detailData.status) }}</el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="测试目的" :span="2">{{ detailData.test_purpose || '-' }}</el-descriptions-item>
         <el-descriptions-item label="前置条件" :span="2">{{ detailData.preconditions || '-' }}</el-descriptions-item>
         <el-descriptions-item label="测试步骤" :span="2">
           <pre style="white-space: pre-wrap; margin: 0;">{{ detailData.test_steps }}</pre>
@@ -199,12 +229,10 @@
         <el-descriptions-item label="预期结果" :span="2">
           <pre style="white-space: pre-wrap; margin: 0;">{{ detailData.expected_results }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="关联需求">
-          <el-button v-if="detailData.requirement_id" type="primary" link @click="showRequirementDetail(detailData.requirement_id)">
-            {{ detailData.requirement_code }}
-          </el-button>
-          <span v-else>-</span>
-        </el-descriptions-item>
+        <el-descriptions-item label="标记">{{ detailData.tags || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="设计者">{{ detailData.designer || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="编制日期">{{ detailData.design_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="发布日期">{{ detailData.publish_date || '-' }}</el-descriptions-item>
         <el-descriptions-item label="关联脚本">
           <el-button v-if="detailData.script_id" type="primary" link @click="showScriptDetail(detailData.script_id)">
             {{ detailData.script_code }}
@@ -213,7 +241,7 @@
         </el-descriptions-item>
       </el-descriptions>
 
-      <el-divider>车型关联</el-divider>
+      <el-divider>适用车型</el-divider>
       <el-table :data="detailData.vehicles || []" border style="width: 100%">
         <el-table-column prop="vehicle_config_name" label="车辆配置" />
         <el-table-column prop="expected_result" label="预期结果" show-overflow-tooltip />
@@ -412,14 +440,18 @@ const searchParams = reactive({
 const formData = reactive({
   case_code: '',
   group_id: '',
-  title: '',
-  description: '',
+  requirement_id: '',
+  case_name: '',
+  test_purpose: '',
+  level: 'A',
   preconditions: '',
   test_steps: '',
   expected_results: '',
-  level: 'P1',
-  status: 'draft',
-  requirement_id: '',
+  tags: '',
+  designer: '',
+  design_date: '',
+  publish_date: '',
+  status: 'Draft',
   script_id: '',
   can_matrix_id: ''
 })
@@ -432,9 +464,9 @@ const groupFormData = reactive({
 })
 
 const formRules = {
-  case_code: [{ required: true, message: '请输入用例编号', trigger: 'blur' }],
+  case_code: [{ required: true, message: '请输入测试用例ID', trigger: 'blur' }],
   group_id: [{ required: true, message: '请选择分组', trigger: 'change' }],
-  title: [{ required: true, message: '请输入用例标题', trigger: 'blur' }],
+  case_name: [{ required: true, message: '请输入测试用例名称', trigger: 'blur' }],
   test_steps: [{ required: true, message: '请输入测试步骤', trigger: 'blur' }],
   expected_results: [{ required: true, message: '请输入预期结果', trigger: 'blur' }]
 }
@@ -444,17 +476,17 @@ const groupFormRules = {
 }
 
 const getPriorityType = (priority) => {
-  const map = { S: 'danger', A: 'warning', B: 'success', C: 'info' }
+  const map = { S: 'danger', A: 'warning', B: 'success', C: 'info', D: '' }
   return map[priority] || 'info'
 }
 
 const getStatusType = (status) => {
-  const map = { draft: 'info', ready: 'success', deprecated: 'danger' }
+  const map = { Draft: 'info', Accepted: 'success', 'Not-Accepted': 'danger' }
   return map[status] || 'info'
 }
 
 const getStatusText = (status) => {
-  const map = { draft: '草稿', ready: '就绪', deprecated: '已废弃' }
+  const map = { Draft: '草稿', Accepted: '已接受', 'Not-Accepted': '不接受' }
   return map[status] || status
 }
 
@@ -540,10 +572,11 @@ const handleAdd = () => {
   dialogTitle.value = '新增测试用例'
   editingId.value = null
   Object.assign(formData, {
-    case_code: '', group_id: searchParams.group_id || '', title: '',
-    description: '', preconditions: '', test_steps: '',
-    expected_results: '', level: 'P1', status: 'draft',
-    requirement_id: '', script_id: '', can_matrix_id: ''
+    case_code: '', group_id: searchParams.group_id || '', requirement_id: '',
+    case_name: '', test_purpose: '', level: 'A',
+    preconditions: '', test_steps: '', expected_results: '',
+    tags: '', designer: '', design_date: '', publish_date: '',
+    status: 'Draft', script_id: '', can_matrix_id: ''
   })
   dialogVisible.value = true
 }
@@ -554,14 +587,18 @@ const handleEdit = (row) => {
   Object.assign(formData, {
     case_code: row.case_code,
     group_id: row.group_id,
-    title: row.title,
-    description: row.description,
+    requirement_id: row.requirement_id || '',
+    case_name: row.case_name,
+    test_purpose: row.test_purpose,
+    level: row.level,
     preconditions: row.preconditions,
     test_steps: row.test_steps,
     expected_results: row.expected_results,
-    level: row.level,
+    tags: row.tags,
+    designer: row.designer,
+    design_date: row.design_date,
+    publish_date: row.publish_date,
     status: row.status,
-    requirement_id: row.requirement_id || '',
     script_id: row.script_id || '',
     can_matrix_id: row.can_matrix_id || ''
   })
@@ -610,13 +647,14 @@ const handleDelete = (row) => {
 
 const handleExport = () => {
   const columns = [
-    { prop: 'case_code', label: '用例编号', width: 15 },
-    { prop: 'title', label: '用例标题', width: 30 },
-    { prop: 'group_name', label: '所属分组', width: 15 },
+    { prop: 'case_code', label: '测试用例ID', width: 15 },
+    { prop: 'requirement_code', label: '上游需求ID', width: 15 },
+    { prop: 'case_name', label: '测试用例名称', width: 30 },
     { prop: 'level', label: '优先级', width: 10 },
-    { prop: 'requirement_code', label: '关联需求', width: 15 },
-    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val },
-    { prop: 'created_at', label: '创建时间', width: 20 }
+    { prop: 'designer', label: '设计者', width: 10 },
+    { prop: 'design_date', label: '编制日期', width: 15 },
+    { prop: 'publish_date', label: '发布日期', width: 15 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
   ]
   exportToExcel(tableData.value, columns, '测试用例列表')
   ElMessage.success('导出成功')

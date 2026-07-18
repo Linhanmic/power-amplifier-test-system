@@ -40,17 +40,20 @@ class TestCase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     case_code = db.Column(db.String(50), nullable=False, unique=True, comment='用例编号')
     group_id = db.Column(db.Integer, db.ForeignKey('test_case_groups.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False, comment='用例标题')
-    description = db.Column(db.Text, comment='用例描述')
+    requirement_id = db.Column(db.Integer, db.ForeignKey('requirements.id'), comment='上游需求ID')
+    case_name = db.Column(db.String(200), nullable=False, comment='测试用例名称')
+    test_purpose = db.Column(db.Text, comment='测试目的')
+    level = db.Column(db.String(20), comment='优先级')
     preconditions = db.Column(db.Text, comment='前置条件')
     test_steps = db.Column(db.Text, nullable=False, comment='测试步骤')
     expected_results = db.Column(db.Text, nullable=False, comment='预期结果')
-    level = db.Column(db.String(20), comment='优先级')
-    requirement_id = db.Column(db.Integer, db.ForeignKey('requirements.id'), comment='关联需求')
-    status = db.Column(db.String(20), default='draft', comment='状态')
+    tags = db.Column(db.Text, comment='标记')
+    designer = db.Column(db.String(50), comment='测试用例设计者')
+    design_date = db.Column(db.Date, comment='测试用例编制日期')
+    publish_date = db.Column(db.Date, comment='测试用例发布日期')
+    status = db.Column(db.String(20), default='Draft', comment='状态')
     script_id = db.Column(db.Integer, db.ForeignKey('test_scripts.id'), comment='关联脚本')
     can_matrix_id = db.Column(db.Integer, db.ForeignKey('can_matrices.id'), comment='关联CAN矩阵')
-    created_by = db.Column(db.String(50), comment='创建人')
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -63,18 +66,21 @@ class TestCase(db.Model):
             'case_code': self.case_code,
             'group_id': self.group_id,
             'group_name': self.group.name if self.group else None,
-            'title': self.title,
-            'description': self.description,
+            'requirement_id': self.requirement_id,
+            'requirement_code': self.requirement.req_code if self.requirement else None,
+            'case_name': self.case_name,
+            'test_purpose': self.test_purpose,
+            'level': self.level,
             'preconditions': self.preconditions,
             'test_steps': self.test_steps,
             'expected_results': self.expected_results,
-            'level': self.level,
-            'requirement_id': self.requirement_id,
-            'requirement_code': self.requirement.req_code if self.requirement else None,
+            'tags': self.tags,
+            'designer': self.designer,
+            'design_date': self.design_date.isoformat() if self.design_date else None,
+            'publish_date': self.publish_date.isoformat() if self.publish_date else None,
             'status': self.status,
             'script_id': self.script_id,
             'can_matrix_id': self.can_matrix_id,
-            'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'vehicles': [v.to_dict() for v in self.vehicles]
