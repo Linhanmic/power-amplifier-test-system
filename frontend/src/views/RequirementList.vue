@@ -27,39 +27,56 @@
             <el-option label="已拒绝" value="rejected" />
           </el-select>
         </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="searchParams.category" placeholder="全部" clearable>
-            <el-option label="功能测试" value="功能测试" />
-            <el-option label="性能测试" value="性能测试" />
-            <el-option label="可靠性测试" value="可靠性测试" />
-          </el-select>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="loadData">查询</el-button>
           <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
       </el-form>
 
-      <el-table :data="tableData" border style="width: 100%">
-        <el-table-column prop="req_code" label="需求编号" width="120" />
-        <el-table-column prop="title" label="需求标题" show-overflow-tooltip />
-        <el-table-column prop="category" label="分类" width="100" />
-        <el-table-column prop="priority" label="优先级" width="80">
+      <!-- 列显示设置 -->
+      <div class="column-settings">
+        <el-popover placement="bottom" :width="400" trigger="click">
+          <template #reference>
+            <el-button size="small">
+              <el-icon><Setting /></el-icon> 列设置
+            </el-button>
+          </template>
+          <div class="column-checkbox-group">
+            <el-checkbox v-model="columnVisibility.req_code" disabled>需求ID</el-checkbox>
+            <el-checkbox v-model="columnVisibility.title" disabled>需求名称</el-checkbox>
+            <el-checkbox v-model="columnVisibility.priority">优先级</el-checkbox>
+            <el-checkbox v-model="columnVisibility.description">需求详情</el-checkbox>
+            <el-checkbox v-model="columnVisibility.verification_scope">验证范围</el-checkbox>
+            <el-checkbox v-model="columnVisibility.verification_criteria">验证准则</el-checkbox>
+            <el-checkbox v-model="columnVisibility.designer">编制人</el-checkbox>
+            <el-checkbox v-model="columnVisibility.design_date">编制日期</el-checkbox>
+            <el-checkbox v-model="columnVisibility.status">状态</el-checkbox>
+          </div>
+        </el-popover>
+      </div>
+
+      <el-table :data="tableData" border style="width: 100%" :default-sort="{ prop: 'req_code', order: 'ascending' }">
+        <el-table-column prop="req_code" label="需求ID" width="140" fixed sortable />
+        <el-table-column v-if="columnVisibility.title" prop="title" label="需求名称" show-overflow-tooltip min-width="150" />
+        <el-table-column v-if="columnVisibility.priority" prop="priority" label="优先级" width="80" sortable>
           <template #default="{ row }">
             <el-tag :type="getPriorityType(row.priority)" size="small">
               {{ row.priority }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column v-if="columnVisibility.description" prop="description" label="需求详情" show-overflow-tooltip min-width="200" />
+        <el-table-column v-if="columnVisibility.verification_scope" prop="verification_scope" label="验证范围" show-overflow-tooltip min-width="150" />
+        <el-table-column v-if="columnVisibility.verification_criteria" prop="verification_criteria" label="验证准则" show-overflow-tooltip min-width="150" />
+        <el-table-column v-if="columnVisibility.designer" prop="designer" label="编制人" width="80" />
+        <el-table-column v-if="columnVisibility.design_date" prop="design_date" label="编制日期" width="110" sortable />
+        <el-table-column v-if="columnVisibility.status" prop="status" label="状态" width="90" sortable>
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_by" label="创建人" width="100" />
-        <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
@@ -85,8 +102,8 @@
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="需求编号" prop="req_code">
-              <el-input v-model="formData.req_code" placeholder="请输入需求编号" />
+            <el-form-item label="需求ID" prop="req_code">
+              <el-input v-model="formData.req_code" :placeholder="reqCodePlaceholder" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -100,32 +117,37 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="需求标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入需求标题" />
+        <el-form-item label="需求名称" prop="title">
+          <el-input v-model="formData.title" placeholder="请输入需求名称" />
+        </el-form-item>
+        <el-form-item label="需求详情">
+          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入需求详情" />
+        </el-form-item>
+        <el-form-item label="验证范围">
+          <el-input v-model="formData.verification_scope" type="textarea" :rows="2" placeholder="请输入验证范围" />
+        </el-form-item>
+        <el-form-item label="验证准则">
+          <el-input v-model="formData.verification_criteria" type="textarea" :rows="2" placeholder="请输入验证准则" />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="分类" prop="category">
-              <el-select v-model="formData.category" placeholder="请选择分类">
-                <el-option label="功能测试" value="功能测试" />
-                <el-option label="性能测试" value="性能测试" />
-                <el-option label="可靠性测试" value="可靠性测试" />
-              </el-select>
+            <el-form-item label="编制人">
+              <el-input v-model="formData.designer" placeholder="请输入编制人" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="状态" prop="status">
-              <el-select v-model="formData.status" placeholder="请选择状态">
-                <el-option label="草稿" value="draft" />
-                <el-option label="评审中" value="reviewing" />
-                <el-option label="已通过" value="approved" />
-                <el-option label="已拒绝" value="rejected" />
-              </el-select>
+            <el-form-item label="编制日期">
+              <el-date-picker v-model="formData.design_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="需求描述">
-          <el-input v-model="formData.description" type="textarea" :rows="4" placeholder="请输入需求描述" />
+        <el-form-item label="状态">
+          <el-select v-model="formData.status" placeholder="请选择状态">
+            <el-option label="草稿" value="draft" />
+            <el-option label="评审中" value="reviewing" />
+            <el-option label="已通过" value="approved" />
+            <el-option label="已拒绝" value="rejected" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -137,19 +159,18 @@
     <!-- 详情对话框 -->
     <el-dialog v-model="detailVisible" title="需求详情" width="900px">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="需求编号">{{ detailData.req_code }}</el-descriptions-item>
+        <el-descriptions-item label="需求ID">{{ detailData.req_code }}</el-descriptions-item>
         <el-descriptions-item label="优先级">
           <el-tag :type="getPriorityType(detailData.priority)" size="small">{{ detailData.priority }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="需求标题" :span="2">{{ detailData.title }}</el-descriptions-item>
-        <el-descriptions-item label="分类">{{ detailData.category || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="需求名称" :span="2">{{ detailData.title }}</el-descriptions-item>
+        <el-descriptions-item label="需求详情" :span="2">{{ detailData.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="验证范围" :span="2">{{ detailData.verification_scope || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="验证准则" :span="2">{{ detailData.verification_criteria || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="编制人">{{ detailData.designer || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="编制日期">{{ detailData.design_date || '-' }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getStatusType(detailData.status)">{{ getStatusText(detailData.status) }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="创建人">{{ detailData.created_by || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ detailData.created_at }}</el-descriptions-item>
-        <el-descriptions-item label="需求描述" :span="2">
-          {{ detailData.description || '-' }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -208,13 +229,52 @@ const formRef = ref(null)
 const editingId = ref(null)
 const detailData = ref({})
 
+// 列显示控制
+const columnVisibility = reactive({
+  req_code: true,
+  title: true,
+  priority: true,
+  description: true,
+  verification_scope: true,
+  verification_criteria: true,
+  designer: true,
+  design_date: true,
+  status: true
+})
+
+const searchParams = reactive({
+  page: 1,
+  per_page: 20,
+  keyword: '',
+  status: ''
+})
+
+const formData = reactive({
+  req_code: '',
+  title: '',
+  description: '',
+  verification_scope: '',
+  verification_criteria: '',
+  priority: 'A',
+  status: 'draft',
+  designer: '',
+  design_date: ''
+})
+
+const formRules = {
+  req_code: [{ required: true, message: '请输入需求ID', trigger: 'blur' }],
+  title: [{ required: true, message: '请输入需求名称', trigger: 'blur' }]
+}
+
+// 需求ID占位符
+const reqCodePlaceholder = 'SWRS-模块-序号 (如: SWRS-PA-001)'
+
 // 按差异分组车型详情
 const groupedVehicleDetails = computed(() => {
   const details = detailData.value.vehicle_details || []
   const groups = {}
 
   details.forEach(d => {
-    // 生成分组key：适用状态 + 差异描述
     const key = `${d.feature_support}_${d.difference_description || ''}`
     if (!groups[key]) {
       groups[key] = {
@@ -228,28 +288,6 @@ const groupedVehicleDetails = computed(() => {
 
   return Object.values(groups)
 })
-
-const searchParams = reactive({
-  page: 1,
-  per_page: 20,
-  keyword: '',
-  status: '',
-  category: ''
-})
-
-const formData = reactive({
-  req_code: '',
-  title: '',
-  description: '',
-  category: '',
-  priority: 'A',
-  status: 'draft'
-})
-
-const formRules = {
-  req_code: [{ required: true, message: '请输入需求编号', trigger: 'blur' }],
-  title: [{ required: true, message: '请输入需求标题', trigger: 'blur' }]
-}
 
 const getPriorityType = (priority) => {
   const map = { S: 'danger', A: 'warning', B: 'success', C: 'info' }
@@ -279,7 +317,6 @@ const loadData = async () => {
 const resetSearch = () => {
   searchParams.keyword = ''
   searchParams.status = ''
-  searchParams.category = ''
   searchParams.page = 1
   loadData()
 }
@@ -289,7 +326,8 @@ const handleAdd = () => {
   editingId.value = null
   Object.assign(formData, {
     req_code: '', title: '', description: '',
-    category: '', priority: 'A', status: 'draft'
+    verification_scope: '', verification_criteria: '',
+    priority: 'A', status: 'draft', designer: '', design_date: ''
   })
   dialogVisible.value = true
 }
@@ -301,9 +339,12 @@ const handleEdit = (row) => {
     req_code: row.req_code,
     title: row.title,
     description: row.description,
-    category: row.category,
+    verification_scope: row.verification_scope,
+    verification_criteria: row.verification_criteria,
     priority: row.priority,
-    status: row.status
+    status: row.status,
+    designer: row.designer,
+    design_date: row.design_date
   })
   dialogVisible.value = true
 }
@@ -320,6 +361,11 @@ const handleDetail = async (row) => {
 const handleSubmit = async () => {
   try {
     await formRef.value.validate()
+    // 验证需求ID格式
+    if (!formData.req_code.startsWith('SWRS-')) {
+      ElMessage.warning('需求ID须以 SWRS- 开头')
+      return
+    }
     if (editingId.value) {
       await requirementApi.update(editingId.value, formData)
       ElMessage.success('更新成功')
@@ -350,13 +396,15 @@ const handleDelete = (row) => {
 
 const handleExport = () => {
   const columns = [
-    { prop: 'req_code', label: '需求编号', width: 15 },
-    { prop: 'title', label: '需求标题', width: 30 },
-    { prop: 'category', label: '分类', width: 15 },
-    { prop: 'priority', label: '优先级', width: 10 },
-    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val },
-    { prop: 'created_by', label: '创建人', width: 10 },
-    { prop: 'created_at', label: '创建时间', width: 20 }
+    { prop: 'req_code', label: '需求ID', width: 18 },
+    { prop: 'title', label: '需求名称', width: 25 },
+    { prop: 'priority', label: '优先级', width: 8 },
+    { prop: 'description', label: '需求详情', width: 30 },
+    { prop: 'verification_scope', label: '验证范围', width: 20 },
+    { prop: 'verification_criteria', label: '验证准则', width: 20 },
+    { prop: 'designer', label: '编制人', width: 10 },
+    { prop: 'design_date', label: '编制日期', width: 12 },
+    { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
   ]
   exportToExcel(tableData.value, columns, '需求列表')
   ElMessage.success('导出成功')
@@ -375,7 +423,33 @@ onMounted(() => {
 }
 
 .search-form {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+}
+
+.column-settings {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.column-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vehicle-groups {
+  margin-top: 10px;
+}
+
+.vehicle-group-item {
+  margin-bottom: 10px;
+}
+
+.vehicle-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .not-applicable {

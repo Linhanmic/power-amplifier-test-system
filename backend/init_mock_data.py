@@ -162,18 +162,34 @@ def init_mock_data():
         db.session.flush()
         print(f"✓ 创建信号定义: {len(signal_definitions)}个")
 
-        # 10. 需求
+        # 10. 需求 (SWRS格式: SWRS-模块-序号)
+        from datetime import date
         requirements = [
-            Requirement(req_code='REQ-PA-001', title='功放基本功能测试', description='验证功放的基本开关机、音量控制功能',
-                       category='功能测试', priority='S', status='approved'),
-            Requirement(req_code='REQ-PA-002', title='蓝牙音频播放测试', description='验证蓝牙连接后的音频播放功能',
-                       category='功能测试', priority='S', status='approved'),
-            Requirement(req_code='REQ-PA-003', title='多音源切换测试', description='验证不同音源之间的切换功能',
-                       category='功能测试', priority='A', status='approved'),
-            Requirement(req_code='REQ-PA-004', title='扬声器通道测试', description='验证各扬声器通道的音频输出',
-                       category='性能测试', priority='S', status='reviewing'),
-            Requirement(req_code='REQ-PA-005', title='功放故障诊断测试', description='验证功放的故障检测和诊断功能',
-                       category='可靠性测试', priority='A', status='draft'),
+            Requirement(req_code='SWRS-PA-001', title='功放基本功能需求',
+                       description='功放应支持基本的开关机、音量控制功能',
+                       verification_scope='功放开关机功能、音量调节功能',
+                       verification_criteria='1. 功放能在5秒内完成开机\n2. 音量调节范围0-100\n3. 静音功能正常',
+                       priority='S', status='approved', designer='王工', design_date=date(2025, 1, 10)),
+            Requirement(req_code='SWRS-PA-002', title='蓝牙音频播放需求',
+                       description='功放应支持蓝牙音频播放功能',
+                       verification_scope='蓝牙连接、音频播放、音量控制',
+                       verification_criteria='1. 蓝牙配对时间<10秒\n2. 音频播放无卡顿\n3. 支持AVRCP协议',
+                       priority='S', status='approved', designer='王工', design_date=date(2025, 1, 10)),
+            Requirement(req_code='SWRS-PA-003', title='多音源切换需求',
+                       description='功放应支持多音源切换功能',
+                       verification_scope='音源切换、优先级管理',
+                       verification_criteria='1. 切换时间<2秒\n2. 音源优先级正确\n3. 无爆音',
+                       priority='A', status='approved', designer='李工', design_date=date(2025, 1, 15)),
+            Requirement(req_code='SWRS-PA-004', title='扬声器通道需求',
+                       description='功放应支持多通道扬声器输出',
+                       verification_scope='通道配置、音频输出',
+                       verification_criteria='1. 通道数符合配置\n2. 各通道独立可控\n3. 通道间无串扰',
+                       priority='S', status='reviewing', designer='李工', design_date=date(2025, 1, 15)),
+            Requirement(req_code='SWRS-PA-005', title='故障诊断需求',
+                       description='功放应支持故障检测和诊断功能',
+                       verification_scope='故障检测、诊断报告',
+                       verification_criteria='1. 能检测扬声器断路\n2. 能检测过温保护\n3. 诊断信息准确',
+                       priority='A', status='draft', designer='张工', design_date=date(2025, 1, 20)),
         ]
         db.session.add_all(requirements)
         db.session.flush()

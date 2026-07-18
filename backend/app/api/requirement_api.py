@@ -12,20 +12,18 @@ class RequirementListAPI(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         status = request.args.get('status')
-        category = request.args.get('category')
         keyword = request.args.get('keyword')
 
         query = Requirement.query
         if status:
             query = query.filter_by(status=status)
-        if category:
-            query = query.filter_by(category=category)
         if keyword:
             query = query.filter(
                 Requirement.title.contains(keyword) | Requirement.req_code.contains(keyword)
             )
 
-        pagination = query.order_by(Requirement.created_at.desc()).paginate(
+        # 按需求ID排序
+        pagination = query.order_by(Requirement.req_code.asc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
 
@@ -51,10 +49,12 @@ class RequirementListAPI(Resource):
             req_code=data['req_code'],
             title=data['title'],
             description=data.get('description'),
-            category=data.get('category'),
+            verification_scope=data.get('verification_scope'),
+            verification_criteria=data.get('verification_criteria'),
             priority=data.get('priority'),
             status=data.get('status', 'draft'),
-            created_by=data.get('created_by')
+            designer=data.get('designer'),
+            design_date=data.get('design_date')
         )
         db.session.add(requirement)
         db.session.flush()
@@ -67,9 +67,7 @@ class RequirementListAPI(Resource):
                 vehicle_model_id=detail['vehicle_model_id'],
                 feature_support=detail.get('feature_support'),
                 function_status=detail.get('function_status'),
-                channel_count=detail.get('channel_count'),
-                power_value=detail.get('power_value'),
-                remark=detail.get('remark')
+                difference_description=detail.get('difference_description')
             )
             db.session.add(vd)
 
@@ -97,14 +95,18 @@ class RequirementAPI(Resource):
             requirement.title = data['title']
         if 'description' in data:
             requirement.description = data['description']
-        if 'category' in data:
-            requirement.category = data['category']
+        if 'verification_scope' in data:
+            requirement.verification_scope = data['verification_scope']
+        if 'verification_criteria' in data:
+            requirement.verification_criteria = data['verification_criteria']
         if 'priority' in data:
             requirement.priority = data['priority']
         if 'status' in data:
             requirement.status = data['status']
-        if 'created_by' in data:
-            requirement.created_by = data['created_by']
+        if 'designer' in data:
+            requirement.designer = data['designer']
+        if 'design_date' in data:
+            requirement.design_date = data['design_date']
 
         # 更新车型详情
         if 'vehicle_details' in data:
@@ -117,9 +119,7 @@ class RequirementAPI(Resource):
                     vehicle_model_id=detail['vehicle_model_id'],
                     feature_support=detail.get('feature_support'),
                     function_status=detail.get('function_status'),
-                    channel_count=detail.get('channel_count'),
-                    power_value=detail.get('power_value'),
-                    remark=detail.get('remark')
+                    difference_description=detail.get('difference_description')
                 )
                 db.session.add(vd)
 
