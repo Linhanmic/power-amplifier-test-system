@@ -164,6 +164,13 @@ export const statsApi = {
   getTree: (type) => request.get(`/tree/${type}`)
 }
 
+// 导入API
+export const importApi = {
+  importPlaybackMatrix: (formData) => request.post('/import/playback-matrix', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 // Gauge API
 export const gaugeApi = {
   // 项目

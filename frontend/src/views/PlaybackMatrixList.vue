@@ -187,13 +187,37 @@
         <el-button type="primary" @click="handleEntrySubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 导入对话框 -->
+    <el-dialog v-model="importDialogVisible" title="导入播放矩阵" width="500px">
+      <el-form ref="importFormRef" :model="importFormData" :rules="importFormRules" label-width="100px">
+        <el-form-item label="车辆配置" prop="vehicle_config_id">
+          <el-select v-model="importFormData.vehicle_config_id" placeholder="请选择配置">
+            <el-option v-for="c in configs" :key="c.id" :label="c.config_name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="矩阵名称" prop="matrix_name">
+          <el-input v-model="importFormData.matrix_name" placeholder="请输入矩阵名称" />
+        </el-form-item>
+        <el-form-item label="Excel文件">
+          <input id="importFile" type="file" accept=".xlsx,.xls" style="width: 100%;" />
+          <div style="color: #909399; font-size: 12px; margin-top: 5px;">
+            支持 .xlsx, .xls 格式
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleImportSubmit">导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { playbackMatrixApi, vehicleConfigApi } from '@/api'
+import { playbackMatrixApi, vehicleConfigApi, importApi } from '@/api'
 import { exportToExcel, statusMap } from '@/utils/export'
 
 // 扬声器列定义
@@ -268,6 +292,11 @@ const formRules = {
 
 const entryFormRules = {
   audio_source: [{ required: true, message: '请输入音源类型', trigger: 'blur' }]
+}
+
+const importFormRules = {
+  vehicle_config_id: [{ required: true, message: '请选择车辆配置', trigger: 'change' }],
+  matrix_name: [{ required: true, message: '请输入矩阵名称', trigger: 'blur' }]
 }
 
 const loadConfigs = async () => {
@@ -404,8 +433,50 @@ const handleEntrySubmit = async () => {
   }
 }
 
+// 导入相关
+const importDialogVisible = ref(false)
+const importFormRef = ref(null)
+const importFormData = reactive({
+  vehicle_config_id: '',
+  matrix_name: ''
+})
+
 const handleImportExcel = () => {
-  ElMessage.info('Excel导入功能开发中')
+  Object.assign(importFormData, {
+    vehicle_config_id: detailData.value.vehicle_config_id || '',
+    matrix_name: ''
+  })
+  importDialogVisible.value = true
+}
+
+const handleImportSubmit = async () => {
+  try {
+    await importFormRef.value.validate()
+
+    const fileInput = document.getElementById('importFile')
+    if (!fileInput.files || fileInput.files.length === 0) {
+      ElMessage.warning('请选择Excel文件')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('file', fileInput.files[0])
+    formData.append('vehicle_config_id', importFormData.vehicle_config_id)
+    formData.append('matrix_name', importFormData.matrix_name)
+
+    const result = await importApi.importPlaybackMatrix(formData)
+    ElMessage.success(result.message)
+    importDialogVisible.value = false
+
+    // 刷新数据
+    loadData()
+    if (currentMatrixId.value) {
+      detailData.value = await playbackMatrixApi.getDetail(currentMatrixId.value)
+    }
+  } catch (error) {
+    console.error('导入失败:', error)
+    ElMessage.error(error.response?.data?.error || '导入失败')
+  }
 }
 
 const handleSubmit = async () => {

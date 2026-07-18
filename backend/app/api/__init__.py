@@ -30,4 +30,5 @@ from . import can_matrix_api
 from . import speaker_mapping_api
 from . import audio_source_api
 from . import playback_matrix_api
+from . import import_api
 from . import stats_api
