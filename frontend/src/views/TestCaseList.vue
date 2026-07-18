@@ -318,7 +318,11 @@
       <el-descriptions :column="2" border v-if="detailData.gauge_scenario_id">
         <el-descriptions-item label="项目名称">{{ detailData.project_name || '-' }}</el-descriptions-item>
         <el-descriptions-item label="项目编号">{{ detailData.project_code || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="Spec名称">{{ detailData.spec_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Spec名称">
+          <el-button type="primary" link @click="showGaugeSpecDetail(detailData.spec_id)">
+            {{ detailData.spec_name || '-' }}
+          </el-button>
+        </el-descriptions-item>
         <el-descriptions-item label="Spec编号">{{ detailData.spec_code || '-' }}</el-descriptions-item>
         <el-descriptions-item label="场景名称">
           <el-button type="primary" link @click="showGaugeScenarioDetail(detailData.gauge_scenario_id)">
@@ -335,6 +339,38 @@
         <el-table-column prop="model_name" label="车型" />
         <el-table-column prop="software_code" label="软件编码" />
         <el-table-column prop="expected_result" label="预期结果" show-overflow-tooltip />
+      </el-table>
+    </el-dialog>
+
+    <!-- Gauge Spec详情弹窗 -->
+    <el-dialog v-model="gaugeSpecDetailVisible" title="Gauge Spec详情" width="700px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="项目名称">{{ gaugeSpecDetailData.project_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Spec编号">{{ gaugeSpecDetailData.spec_code }}</el-descriptions-item>
+        <el-descriptions-item label="Spec名称" :span="2">{{ gaugeSpecDetailData.spec_name }}</el-descriptions-item>
+        <el-descriptions-item label="文件路径" :span="2">{{ gaugeSpecDetailData.file_path || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="gaugeSpecDetailData.status === 'active' ? 'success' : 'info'" size="small">
+            {{ gaugeSpecDetailData.status === 'active' ? '启用' : '停用' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="场景数量">{{ gaugeSpecDetailData.scenario_count || 0 }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>包含场景</el-divider>
+      <el-table :data="gaugeSpecDetailData.scenarios || []" border style="width: 100%">
+        <el-table-column prop="scenario_name" label="场景名称" />
+        <el-table-column prop="scenario_type" label="类型" width="100">
+          <template #default="{ row }">
+            <el-tag size="small">{{ row.scenario_type }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="execution_order" label="顺序" width="60" />
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="showGaugeScenarioDetail(row.id)">详情</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-dialog>
 
@@ -474,6 +510,7 @@ const detailVisible = ref(false)
 const groupDialogVisible = ref(false)
 const reqDetailVisible = ref(false)
 const gaugeScenarioDetailVisible = ref(false)
+const gaugeSpecDetailVisible = ref(false)
 const dialogTitle = ref('')
 const groupDialogTitle = ref('')
 const formRef = ref(null)
@@ -483,6 +520,7 @@ const groupEditingId = ref(null)
 const detailData = ref({})
 const reqDetailData = ref({})
 const gaugeScenarioDetailData = ref({})
+const gaugeSpecDetailData = ref({})
 
 // 列显示控制
 const columnVisibility = reactive({
@@ -874,6 +912,15 @@ const showGaugeScenarioDetail = async (id) => {
     gaugeScenarioDetailVisible.value = true
   } catch (error) {
     console.error('获取Gauge场景详情失败:', error)
+  }
+}
+
+const showGaugeSpecDetail = async (id) => {
+  try {
+    gaugeSpecDetailData.value = await gaugeApi.getSpecDetail(id)
+    gaugeSpecDetailVisible.value = true
+  } catch (error) {
+    console.error('获取Gauge Spec详情失败:', error)
   }
 }
 
