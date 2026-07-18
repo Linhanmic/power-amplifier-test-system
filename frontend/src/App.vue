@@ -34,6 +34,7 @@
           <el-menu-item index="/requirements">需求管理</el-menu-item>
           <el-menu-item index="/test-cases">测试用例</el-menu-item>
           <el-menu-item index="/test-scripts">测试脚本</el-menu-item>
+          <el-menu-item index="/test-scenarios">测试场景</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="can-manage">

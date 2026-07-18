@@ -45,6 +45,12 @@ const routes = [
     component: () => import('@/views/TestScriptList.vue'),
     meta: { title: '测试脚本' }
   },
+  {
+    path: '/test-scenarios',
+    name: 'TestScenarios',
+    component: () => import('@/views/ScenarioList.vue'),
+    meta: { title: '测试场景' }
+  },
   // CAN通讯
   {
     path: '/can-matrices',

@@ -69,7 +69,11 @@ export const testScenarioApi = {
   getDetail: (id) => request.get(`/test-scenarios/${id}`),
   create: (data) => request.post('/test-scenarios', data),
   update: (id, data) => request.put(`/test-scenarios/${id}`, data),
-  delete: (id) => request.delete(`/test-scenarios/${id}`)
+  delete: (id) => request.delete(`/test-scenarios/${id}`),
+  // 场景参数
+  createParameter: (data) => request.post('/scenario-parameters', data),
+  updateParameter: (id, data) => request.put(`/scenario-parameters/${id}`, data),
+  deleteParameter: (id) => request.delete(`/scenario-parameters/${id}`)
 }
 
 // CAN矩阵API

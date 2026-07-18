@@ -110,15 +110,31 @@ class TestScriptAPI(Resource):
 class TestScenarioListAPI(Resource):
     def get(self):
         """获取场景列表"""
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
         script_id = request.args.get('script_id', type=int)
-        if not script_id:
-            return {'error': 'script_id必填'}, 400
+        keyword = request.args.get('keyword', '')
+        status = request.args.get('status', '')
 
-        scenarios = TestScenario.query.filter_by(script_id=script_id).order_by(
-            TestScenario.execution_order
-        ).all()
+        query = TestScenario.query
 
-        return [s.to_dict() for s in scenarios]
+        if script_id:
+            query = query.filter_by(script_id=script_id)
+        if keyword:
+            query = query.filter(TestScenario.scenario_name.contains(keyword))
+        if status:
+            query = query.filter_by(status=status)
+
+        pagination = query.order_by(TestScenario.script_id, TestScenario.execution_order).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+
+        return {
+            'items': [s.to_dict() for s in pagination.items],
+            'total': pagination.total,
+            'page': page,
+            'per_page': per_page
+        }
 
     def post(self):
         """创建场景"""
@@ -133,7 +149,7 @@ class TestScenarioListAPI(Resource):
             scenario_name=data['scenario_name'],
             spec_file=data.get('spec_file'),
             scenario_type=data.get('scenario_type'),
-            table_driven=data.get('table_driven', False),
+            table_driven=data.get('scenario_type') == 'table_driven',
             value_table=data.get('value_table'),
             execution_order=data.get('execution_order', 0),
             timeout=data.get('timeout', 60000),
@@ -240,7 +256,56 @@ class TestScenarioAPI(Resource):
         return {'message': '删除成功'}
 
 
+class ScenarioParameterAPI(Resource):
+    def post(self):
+        """创建场景参数"""
+        data = request.get_json()
+        required_fields = ['scenario_id', 'param_name']
+        for field in required_fields:
+            if not data.get(field):
+                return {'error': f'{field}必填'}, 400
+
+        param = ScenarioParameter(
+            scenario_id=data['scenario_id'],
+            param_name=data['param_name'],
+            param_value=data.get('param_value'),
+            param_type=data.get('param_type', 'string'),
+            is_required=data.get('is_required', False),
+            description=data.get('description')
+        )
+        db.session.add(param)
+        db.session.commit()
+        return param.to_dict(), 201
+
+    def put(self, param_id):
+        """更新场景参数"""
+        param = ScenarioParameter.query.get_or_404(param_id)
+        data = request.get_json()
+
+        if data.get('param_name'):
+            param.param_name = data['param_name']
+        if 'param_value' in data:
+            param.param_value = data['param_value']
+        if 'param_type' in data:
+            param.param_type = data['param_type']
+        if 'is_required' in data:
+            param.is_required = data['is_required']
+        if 'description' in data:
+            param.description = data['description']
+
+        db.session.commit()
+        return param.to_dict()
+
+    def delete(self, param_id):
+        """删除场景参数"""
+        param = ScenarioParameter.query.get_or_404(param_id)
+        db.session.delete(param)
+        db.session.commit()
+        return {'message': '删除成功'}
+
+
 api.add_resource(TestScriptListAPI, '/test-scripts')
 api.add_resource(TestScriptAPI, '/test-scripts/<int:script_id>')
 api.add_resource(TestScenarioListAPI, '/test-scenarios')
 api.add_resource(TestScenarioAPI, '/test-scenarios/<int:scenario_id>')
+api.add_resource(ScenarioParameterAPI, '/scenario-parameters', '/scenario-parameters/<int:param_id>')

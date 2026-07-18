@@ -123,8 +123,12 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter, useRoute } from 'vue-router'
 import { testScriptApi } from '@/api'
 import { exportToExcel, statusMap } from '@/utils/export'
+
+const router = useRouter()
+const route = useRoute()
 
 const tableData = ref([])
 const total = ref(0)
@@ -211,7 +215,8 @@ const handleEdit = (row) => {
 }
 
 const handleScenarios = (row) => {
-  ElMessage.info('场景管理功能开发中')
+  // 跳转到场景管理页面，带上脚本ID作为筛选条件
+  router.push({ path: '/test-scenarios', query: { script_id: row.id } })
 }
 
 const handleSubmit = async () => {
