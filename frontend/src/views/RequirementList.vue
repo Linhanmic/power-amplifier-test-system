@@ -155,24 +155,36 @@
 
       <el-divider>车型详情</el-divider>
 
-      <!-- 车型详情表格 -->
-      <el-table :data="detailData.vehicle_details || []" border style="width: 100%">
-        <el-table-column prop="vehicle_model_name" label="车型" width="150" />
-        <el-table-column label="适用状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.feature_support ? 'success' : 'info'" size="small">
-              {{ row.feature_support ? '适用' : '不适用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="车型差异" min-width="200">
-          <template #default="{ row }">
-            <span v-if="!row.feature_support" class="not-applicable">不适用</span>
-            <span v-else-if="row.difference_description">{{ row.difference_description }}</span>
-            <span v-else class="no-difference">无</span>
-          </template>
-        </el-table-column>
-      </el-table>
+      <!-- 按差异分组显示 -->
+      <div v-if="groupedVehicleDetails.length > 0" class="vehicle-groups">
+        <div v-for="(group, index) in groupedVehicleDetails" :key="index" class="vehicle-group-item">
+          <el-table :data="[group]" border style="width: 100%">
+            <el-table-column label="适用车型" min-width="180">
+              <template #default>
+                <div class="vehicle-names">
+                  <el-tag v-for="name in group.vehicle_names" :key="name" size="small" style="margin: 2px;">
+                    {{ name }}
+                  </el-tag>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="适用状态" width="100">
+              <template #default>
+                <el-tag :type="group.feature_support ? 'success' : 'info'" size="small">
+                  {{ group.feature_support ? '适用' : '不适用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="车型差异" min-width="250">
+              <template #default>
+                <span v-if="!group.feature_support" class="not-applicable">不适用</span>
+                <span v-else-if="group.difference_description">{{ group.difference_description }}</span>
+                <span v-else class="no-difference">无</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
 
       <!-- 无车型详情时显示 -->
       <el-empty v-if="!detailData.vehicle_details || detailData.vehicle_details.length === 0"
@@ -182,7 +194,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { requirementApi } from '@/api'
 import { exportToExcel, statusMap, priorityMap } from '@/utils/export'
@@ -195,6 +207,27 @@ const dialogTitle = ref('')
 const formRef = ref(null)
 const editingId = ref(null)
 const detailData = ref({})
+
+// 按差异分组车型详情
+const groupedVehicleDetails = computed(() => {
+  const details = detailData.value.vehicle_details || []
+  const groups = {}
+
+  details.forEach(d => {
+    // 生成分组key：适用状态 + 差异描述
+    const key = `${d.feature_support}_${d.difference_description || ''}`
+    if (!groups[key]) {
+      groups[key] = {
+        feature_support: d.feature_support,
+        difference_description: d.difference_description,
+        vehicle_names: []
+      }
+    }
+    groups[key].vehicle_names.push(d.vehicle_model_name)
+  })
+
+  return Object.values(groups)
+})
 
 const searchParams = reactive({
   page: 1,
