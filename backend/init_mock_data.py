@@ -196,20 +196,20 @@ def init_mock_data():
 
         # 12. 测试用例分组
         case_groups = [
-            TestCaseGroup(name='功放基础功能', description='功放基础功能测试用例', sort_order=1, level=0),
-            TestCaseGroup(name='音频播放功能', description='音频播放相关测试用例', sort_order=2, level=0),
-            TestCaseGroup(name='通道控制功能', description='扬声器通道控制测试用例', sort_order=3, level=0),
-            TestCaseGroup(name='故障诊断功能', description='故障诊断相关测试用例', sort_order=4, level=0),
+            TestCaseGroup(name='功放基础功能', code='PA', description='功放基础功能测试用例', sort_order=1, level=0),
+            TestCaseGroup(name='音频播放功能', code='AP', description='音频播放相关测试用例', sort_order=2, level=0),
+            TestCaseGroup(name='通道控制功能', code='CH', description='扬声器通道控制测试用例', sort_order=3, level=0),
+            TestCaseGroup(name='故障诊断功能', code='FD', description='故障诊断相关测试用例', sort_order=4, level=0),
         ]
         db.session.add_all(case_groups)
         db.session.flush()
 
         # 子分组
         sub_groups = [
-            TestCaseGroup(parent_id=case_groups[0].id, name='开关机测试', description='功放开关机测试', sort_order=1, level=1),
-            TestCaseGroup(parent_id=case_groups[0].id, name='音量控制测试', description='音量调节测试', sort_order=2, level=1),
-            TestCaseGroup(parent_id=case_groups[1].id, name='蓝牙音频测试', description='蓝牙音频播放测试', sort_order=1, level=1),
-            TestCaseGroup(parent_id=case_groups[1].id, name='USB音频测试', description='USB音频播放测试', sort_order=2, level=1),
+            TestCaseGroup(parent_id=case_groups[0].id, name='开关机测试', code='PWR', description='功放开关机测试', sort_order=1, level=1),
+            TestCaseGroup(parent_id=case_groups[0].id, name='音量控制测试', code='VOL', description='音量调节测试', sort_order=2, level=1),
+            TestCaseGroup(parent_id=case_groups[1].id, name='蓝牙音频测试', code='BT', description='蓝牙音频播放测试', sort_order=1, level=1),
+            TestCaseGroup(parent_id=case_groups[1].id, name='USB音频测试', code='USB', description='USB音频播放测试', sort_order=2, level=1),
         ]
         db.session.add_all(sub_groups)
         db.session.flush()
@@ -269,31 +269,31 @@ def init_mock_data():
         db.session.flush()
         print(f"✓ 创建场景数据表: {len(scenario_data_tables)}个")
 
-        # 17. 测试用例
+        # 17. 测试用例 (SwQT格式: SwQT-模块编码-序号)
         from datetime import date
         test_cases = [
-            TestCase(case_code='TC-PA-001', group_id=sub_groups[0].id,
+            TestCase(case_code='SwQT-PWR-001', group_id=sub_groups[0].id,
                     case_name='功放开机功能测试', test_purpose='验证功放能够正常开机',
                     level='S', preconditions='车辆电源OFF',
                     test_steps='1. 打开车辆电源\n2. 等待功放初始化\n3. 检查功放状态',
                     expected_results='功放状态为ON，CAN信号AMP_PowerStatus=1',
                     tags='冒烟,开机', designer='张三', design_date=date(2025, 1, 15), publish_date=date(2025, 2, 1),
                     status='Accepted', scenario_id=test_scenarios[0].id, can_matrix_id=can_matrices[0].id),
-            TestCase(case_code='TC-PA-002', group_id=sub_groups[0].id,
+            TestCase(case_code='SwQT-PWR-002', group_id=sub_groups[0].id,
                     case_name='功放关机功能测试', test_purpose='验证功放能够正常关机',
                     level='S', preconditions='车辆电源ON，功放已开机',
                     test_steps='1. 关闭车辆电源\n2. 等待功放关机\n3. 检查功放状态',
                     expected_results='功放状态为OFF，CAN信号AMP_PowerStatus=0',
                     tags='冒烟,关机', designer='张三', design_date=date(2025, 1, 15), publish_date=date(2025, 2, 1),
                     status='Accepted', scenario_id=test_scenarios[1].id, can_matrix_id=can_matrices[0].id),
-            TestCase(case_code='TC-PA-003', group_id=sub_groups[1].id,
+            TestCase(case_code='SwQT-VOL-001', group_id=sub_groups[1].id,
                     case_name='音量增加测试', test_purpose='验证音量能够正常增加',
                     level='A', preconditions='功放已开机，音量为0',
                     test_steps='1. 发送音量增加命令\n2. 检查音量变化\n3. 验证CAN信号',
                     expected_results='音量增加，CAN信号AMP_Volume递增',
                     tags='功能,音量', designer='李四', design_date=date(2025, 1, 20), publish_date=date(2025, 2, 5),
                     status='Accepted', scenario_id=test_scenarios[2].id, can_matrix_id=can_matrices[0].id),
-            TestCase(case_code='TC-PA-004', group_id=sub_groups[2].id,
+            TestCase(case_code='SwQT-BT-001', group_id=sub_groups[2].id,
                     case_name='蓝牙连接音频播放测试', test_purpose='验证蓝牙连接后的音频播放功能',
                     level='A', preconditions='手机已蓝牙配对',
                     test_steps='1. 建立蓝牙连接\n2. 播放手机音乐\n3. 检查音频输出',

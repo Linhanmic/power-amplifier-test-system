@@ -14,6 +14,7 @@ class TestCaseGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('test_case_groups.id'), nullable=True, comment='父分组ID')
     name = db.Column(db.String(100), nullable=False, comment='分组名称')
+    code = db.Column(db.String(20), nullable=True, comment='分组编码')
     description = db.Column(db.Text, comment='分组描述')
     sort_order = db.Column(db.Integer, default=0, comment='排序')
     level = db.Column(db.Integer, default=0, comment='层级')
@@ -28,6 +29,7 @@ class TestCaseGroup(db.Model):
             'id': self.id,
             'parent_id': self.parent_id,
             'name': self.name,
+            'code': self.code,
             'description': self.description,
             'sort_order': self.sort_order,
             'level': self.level,

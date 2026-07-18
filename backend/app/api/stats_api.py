@@ -58,6 +58,7 @@ class TreeDataAPI(Resource):
         result = {
             'id': group.id,
             'label': group.name,
+            'code': group.code,
             'children': []
         }
         for child in group.children.order_by(TestCaseGroup.sort_order):

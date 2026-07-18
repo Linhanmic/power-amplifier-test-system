@@ -62,9 +62,32 @@
             </el-form-item>
           </el-form>
 
-          <el-table :data="tableData" border style="width: 100%">
-            <el-table-column prop="case_code" label="测试用例ID" width="120" />
-            <el-table-column prop="requirements" label="上游需求ID" width="180">
+          <!-- 列显示设置 -->
+          <div class="column-settings">
+            <el-popover placement="bottom" :width="400" trigger="click">
+              <template #reference>
+                <el-button size="small">
+                  <el-icon><Setting /></el-icon> 列设置
+                </el-button>
+              </template>
+              <div class="column-checkbox-group">
+                <el-checkbox v-model="columnVisibility.case_code" disabled>测试用例ID</el-checkbox>
+                <el-checkbox v-model="columnVisibility.case_name" disabled>用例名称</el-checkbox>
+                <el-checkbox v-model="columnVisibility.requirements">上游需求ID</el-checkbox>
+                <el-checkbox v-model="columnVisibility.vehicles">适用车型</el-checkbox>
+                <el-checkbox v-model="columnVisibility.level">优先级</el-checkbox>
+                <el-checkbox v-model="columnVisibility.test_triple">前置条件/步骤/结果</el-checkbox>
+                <el-checkbox v-model="columnVisibility.scenario">测试场景</el-checkbox>
+                <el-checkbox v-model="columnVisibility.designer">编制人</el-checkbox>
+                <el-checkbox v-model="columnVisibility.design_date">编制日期</el-checkbox>
+                <el-checkbox v-model="columnVisibility.status">状态</el-checkbox>
+              </div>
+            </el-popover>
+          </div>
+
+          <el-table :data="tableData" border style="width: 100%" :default-sort="{ prop: 'case_code', order: 'ascending' }">
+            <el-table-column prop="case_code" label="测试用例ID" width="140" fixed sortable />
+            <el-table-column v-if="columnVisibility.requirements" prop="requirements" label="上游需求ID" width="150">
               <template #default="{ row }">
                 <template v-if="row.requirements && row.requirements.length > 0">
                   <el-button v-for="req in row.requirements" :key="req.id" type="primary" link size="small" @click="showRequirementDetail(req.id)" style="margin-right: 5px;">
@@ -74,19 +97,57 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="case_name" label="测试用例名称" show-overflow-tooltip />
-            <el-table-column prop="level" label="优先级" width="80">
+            <el-table-column v-if="columnVisibility.case_name" prop="case_name" label="用例名称" show-overflow-tooltip min-width="150" />
+            <el-table-column v-if="columnVisibility.vehicles" prop="vehicles" label="适用车型" width="150">
+              <template #default="{ row }">
+                <template v-if="row.vehicles && row.vehicles.length > 0">
+                  <el-tag v-for="v in row.vehicles.slice(0, 2)" :key="v.id" size="small" style="margin-right: 4px;">
+                    {{ v.model_name || v.config_name }}
+                  </el-tag>
+                  <el-tag v-if="row.vehicles.length > 2" size="small" type="info">+{{ row.vehicles.length - 2 }}</el-tag>
+                </template>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="columnVisibility.level" prop="level" label="优先级" width="80" sortable>
               <template #default="{ row }">
                 <el-tag :type="getPriorityType(row.level)" size="small">{{ row.level }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="designer" label="设计者" width="100" />
-            <el-table-column prop="status" label="状态" width="100">
+            <el-table-column v-if="columnVisibility.test_triple" label="前置条件/步骤/结果" min-width="300">
               <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+                <div class="test-triple">
+                  <div class="triple-item">
+                    <span class="triple-label">前置:</span>
+                    <span class="triple-content">{{ row.preconditions || '-' }}</span>
+                  </div>
+                  <div class="triple-item">
+                    <span class="triple-label">步骤:</span>
+                    <span class="triple-content">{{ row.test_steps || '-' }}</span>
+                  </div>
+                  <div class="triple-item">
+                    <span class="triple-label">预期:</span>
+                    <span class="triple-content">{{ row.expected_results || '-' }}</span>
+                  </div>
+                </div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right">
+            <el-table-column v-if="columnVisibility.scenario" prop="scenario_name" label="测试场景" width="120">
+              <template #default="{ row }">
+                <el-button v-if="row.scenario_id" type="primary" link size="small" @click="showScenarioDetailById(row.scenario_id)">
+                  {{ row.scenario_name }}
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="columnVisibility.designer" prop="designer" label="编制人" width="80" />
+            <el-table-column v-if="columnVisibility.design_date" prop="design_date" label="编制日期" width="110" sortable />
+            <el-table-column v-if="columnVisibility.status" prop="status" label="状态" width="90" sortable>
+              <template #default="{ row }">
+                <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
                 <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
                 <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
@@ -114,7 +175,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="测试用例ID" prop="case_code">
-              <el-input v-model="formData.case_code" placeholder="请输入用例编号" />
+              <el-input v-model="formData.case_code" :placeholder="caseCodePlaceholder" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -124,6 +185,7 @@
                 :data="groupTree"
                 :props="{ label: 'label', value: 'id', children: 'children' }"
                 placeholder="请选择分组"
+                @change="handleGroupChange"
               />
             </el-form-item>
           </el-col>
@@ -175,8 +237,8 @@
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="测试用例设计者">
-              <el-input v-model="formData.designer" placeholder="请输入设计者" />
+            <el-form-item label="编制人">
+              <el-input v-model="formData.designer" placeholder="请输入编制人" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -236,7 +298,7 @@
           <pre style="white-space: pre-wrap; margin: 0;">{{ detailData.expected_results }}</pre>
         </el-descriptions-item>
         <el-descriptions-item label="标记">{{ detailData.tags || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="设计者">{{ detailData.designer || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="编制人">{{ detailData.designer || '-' }}</el-descriptions-item>
         <el-descriptions-item label="编制日期">{{ detailData.design_date || '-' }}</el-descriptions-item>
         <el-descriptions-item label="发布日期">{{ detailData.publish_date || '-' }}</el-descriptions-item>
         <el-descriptions-item label="关联场景">
@@ -255,16 +317,10 @@
 
       <el-divider>适用车型</el-divider>
       <el-table :data="detailData.vehicles || []" border style="width: 100%">
-        <el-table-column prop="vehicle_config_name" label="车辆配置" />
+        <el-table-column prop="config_name" label="车辆配置" />
+        <el-table-column prop="model_name" label="车型" />
+        <el-table-column prop="software_code" label="软件编码" />
         <el-table-column prop="expected_result" label="预期结果" show-overflow-tooltip />
-        <el-table-column prop="test_status" label="测试状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getTestStatusType(row.test_status)" size="small">
-              {{ getTestStatusText(row.test_status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="executed_at" label="执行时间" width="160" />
       </el-table>
     </el-dialog>
 
@@ -283,6 +339,9 @@
         </el-form-item>
         <el-form-item label="分组名称" prop="name">
           <el-input v-model="groupFormData.name" placeholder="请输入分组名称" />
+        </el-form-item>
+        <el-form-item label="分组编码" prop="code">
+          <el-input v-model="groupFormData.code" placeholder="如: PA, BT, VOL" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="groupFormData.description" type="textarea" :rows="2" placeholder="请输入描述" />
@@ -406,7 +465,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { testCaseApi, testCaseGroupApi, statsApi, requirementApi, testScriptApi, testScenarioApi, canMatrixApi } from '@/api'
 import { exportToExcel, statusMap, priorityMap } from '@/utils/export'
@@ -434,6 +493,20 @@ const detailData = ref({})
 const reqDetailData = ref({})
 const scriptDetailData = ref({})
 const scenarioDetailData = ref({})
+
+// 列显示控制
+const columnVisibility = reactive({
+  case_code: true,
+  case_name: true,
+  requirements: true,
+  vehicles: true,
+  level: true,
+  test_triple: true,
+  scenario: true,
+  designer: true,
+  design_date: true,
+  status: true
+})
 
 const searchParams = reactive({
   page: 1,
@@ -466,6 +539,7 @@ const formData = reactive({
 const groupFormData = reactive({
   parent_id: '',
   name: '',
+  code: '',
   description: '',
   sort_order: 0
 })
@@ -479,7 +553,42 @@ const formRules = {
 }
 
 const groupFormRules = {
-  name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }],
+  code: [{ required: true, message: '请输入分组编码', trigger: 'blur' }]
+}
+
+// 根据分组生成用例ID占位符
+const caseCodePlaceholder = computed(() => {
+  if (formData.group_id) {
+    const group = findGroupById(groupTree.value, formData.group_id)
+    if (group && group.code) {
+      return `SwQT-${group.code}-XXX`
+    }
+  }
+  return 'SwQT-模块-序号 (如: SwQT-PA-001)'
+})
+
+// 查找分组
+const findGroupById = (groups, id) => {
+  for (const group of groups) {
+    if (group.id === id) return group
+    if (group.children) {
+      const found = findGroupById(group.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+// 分组变化时更新用例ID
+const handleGroupChange = (groupId) => {
+  if (groupId && !editingId.value) {
+    const group = findGroupById(groupTree.value, groupId)
+    if (group && group.code) {
+      // 自动生成用例ID前缀
+      formData.case_code = `SwQT-${group.code}-`
+    }
+  }
 }
 
 const getPriorityType = (priority) => {
@@ -495,16 +604,6 @@ const getStatusType = (status) => {
 const getStatusText = (status) => {
   const map = { Draft: '草稿', Accepted: '已接受', 'Not-Accepted': '不接受' }
   return map[status] || status
-}
-
-const getTestStatusType = (status) => {
-  const map = { pending: 'info', pass: 'success', fail: 'danger', blocked: 'warning' }
-  return map[status] || 'info'
-}
-
-const getTestStatusText = (status) => {
-  const map = { pending: '待执行', pass: '通过', fail: '失败', blocked: '阻塞' }
-  return map[status] || status || '-'
 }
 
 const loadGroupTree = async () => {
@@ -579,7 +678,7 @@ const handleAddGroup = () => {
   groupDialogTitle.value = '新增分组'
   groupEditingId.value = null
   Object.assign(groupFormData, {
-    parent_id: '', name: '', description: '', sort_order: 0
+    parent_id: '', name: '', code: '', description: '', sort_order: 0
   })
   groupDialogVisible.value = true
 }
@@ -633,6 +732,11 @@ const handleDetail = async (row) => {
 const handleSubmit = async () => {
   try {
     await formRef.value.validate()
+    // 验证用例ID格式
+    if (!formData.case_code.startsWith('SwQT-')) {
+      ElMessage.warning('测试用例ID须以 SwQT- 开头')
+      return
+    }
     if (editingId.value) {
       await testCaseApi.update(editingId.value, formData)
       ElMessage.success('更新成功')
@@ -663,16 +767,26 @@ const handleDelete = (row) => {
 
 const handleExport = () => {
   const columns = [
-    { prop: 'case_code', label: '测试用例ID', width: 15 },
-    { prop: 'requirement_code', label: '上游需求ID', width: 15 },
-    { prop: 'case_name', label: '测试用例名称', width: 30 },
-    { prop: 'level', label: '优先级', width: 10 },
-    { prop: 'designer', label: '设计者', width: 10 },
-    { prop: 'design_date', label: '编制日期', width: 15 },
-    { prop: 'publish_date', label: '发布日期', width: 15 },
+    { prop: 'case_code', label: '测试用例ID', width: 18 },
+    { prop: 'requirement_codes', label: '上游需求ID', width: 15 },
+    { prop: 'case_name', label: '用例名称', width: 25 },
+    { prop: 'vehicle_names', label: '适用车型', width: 15 },
+    { prop: 'level', label: '优先级', width: 8 },
+    { prop: 'preconditions', label: '前置条件', width: 20 },
+    { prop: 'test_steps', label: '测试步骤', width: 30 },
+    { prop: 'expected_results', label: '预期结果', width: 30 },
+    { prop: 'scenario_name', label: '测试场景', width: 15 },
+    { prop: 'designer', label: '编制人', width: 10 },
+    { prop: 'design_date', label: '编制日期', width: 12 },
     { prop: 'status', label: '状态', width: 10, formatter: (val) => statusMap[val] || val }
   ]
-  exportToExcel(tableData.value, columns, '测试用例列表')
+  // 处理导出数据
+  const exportData = tableData.value.map(row => ({
+    ...row,
+    requirement_codes: row.requirements?.map(r => r.req_code).join(', ') || '-',
+    vehicle_names: row.vehicles?.map(v => v.model_name || v.config_name).join(', ') || '-'
+  }))
+  exportToExcel(exportData, columns, '测试用例列表')
   ElMessage.success('导出成功')
 }
 
@@ -746,12 +860,50 @@ onMounted(() => {
 }
 
 .search-form {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+}
+
+.column-settings {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.column-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .group-card {
   height: calc(100vh - 200px);
   overflow-y: auto;
+}
+
+.test-triple {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.triple-item {
+  display: flex;
+  margin-bottom: 4px;
+}
+
+.triple-label {
+  color: #909399;
+  font-weight: bold;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+.triple-content {
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .json-block {

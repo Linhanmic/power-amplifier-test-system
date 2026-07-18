@@ -17,6 +17,7 @@ class TestCaseGroupListApi(Resource):
         group = TestCaseGroup(
             parent_id=data.get('parent_id'),
             name=data.get('name'),
+            code=data.get('code'),
             description=data.get('description'),
             sort_order=data.get('sort_order', 0),
             level=data.get('level', 0)
@@ -37,6 +38,7 @@ class TestCaseGroupApi(Resource):
         group = TestCaseGroup.query.get_or_404(group_id)
         data = request.get_json()
         group.name = data.get('name', group.name)
+        group.code = data.get('code', group.code)
         group.description = data.get('description', group.description)
         group.sort_order = data.get('sort_order', group.sort_order)
         group.level = data.get('level', group.level)
@@ -75,7 +77,8 @@ class TestCaseListApi(Resource):
         if requirement_id:
             query = query.filter(TestCase.requirements.any(id=requirement_id))
 
-        pagination = query.order_by(TestCase.case_code).paginate(page=page, per_page=per_page)
+        # 按用例ID排序
+        pagination = query.order_by(TestCase.case_code.asc()).paginate(page=page, per_page=per_page)
         return {
             'items': [t.to_dict() for t in pagination.items],
             'total': pagination.total,
