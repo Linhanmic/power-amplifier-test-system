@@ -179,16 +179,33 @@ def init_mock_data():
         db.session.flush()
         print(f"✓ 创建需求: {len(requirements)}个")
 
-        # 11. 需求车型详情
+        # 11. 需求车型详情（按差异分组）
         req_vehicle_details = [
+            # 需求1: 功放基本功能测试 - 不同车型有不同功率和通道数
             RequirementVehicleDetail(requirement_id=requirements[0].id, vehicle_model_id=vehicle_models[0].id,
+                                    feature_support=True, function_status='正常', channel_count=8, power_value=400),
+            RequirementVehicleDetail(requirement_id=requirements[0].id, vehicle_model_id=vehicle_models[1].id,
                                     feature_support=True, function_status='正常', channel_count=8, power_value=400),
             RequirementVehicleDetail(requirement_id=requirements[0].id, vehicle_model_id=vehicle_models[2].id,
                                     feature_support=True, function_status='正常', channel_count=8, power_value=350),
+            RequirementVehicleDetail(requirement_id=requirements[0].id, vehicle_model_id=vehicle_models[3].id,
+                                    feature_support=True, function_status='降级', channel_count=6, power_value=300),
+            RequirementVehicleDetail(requirement_id=requirements[0].id, vehicle_model_id=vehicle_models[4].id,
+                                    feature_support=False),  # 不适用车型
+            # 需求2: 蓝牙音频播放测试 - 部分车型不支持
             RequirementVehicleDetail(requirement_id=requirements[1].id, vehicle_model_id=vehicle_models[0].id,
+                                    feature_support=True, function_status='正常'),
+            RequirementVehicleDetail(requirement_id=requirements[1].id, vehicle_model_id=vehicle_models[1].id,
                                     feature_support=True, function_status='正常'),
             RequirementVehicleDetail(requirement_id=requirements[1].id, vehicle_model_id=vehicle_models[2].id,
                                     feature_support=True, function_status='正常'),
+            RequirementVehicleDetail(requirement_id=requirements[1].id, vehicle_model_id=vehicle_models[4].id,
+                                    feature_support=False),  # 不适用车型
+            # 需求3: 多音源切换测试 - 所有车型都支持
+            RequirementVehicleDetail(requirement_id=requirements[2].id, vehicle_model_id=vehicle_models[0].id,
+                                    feature_support=True, function_status='正常', channel_count=8, power_value=400),
+            RequirementVehicleDetail(requirement_id=requirements[2].id, vehicle_model_id=vehicle_models[2].id,
+                                    feature_support=True, function_status='正常', channel_count=8, power_value=350),
         ]
         db.session.add_all(req_vehicle_details)
         db.session.flush()

@@ -135,7 +135,7 @@
     </el-dialog>
 
     <!-- 详情对话框 -->
-    <el-dialog v-model="detailVisible" title="需求详情" width="800px">
+    <el-dialog v-model="detailVisible" title="需求详情" width="900px">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="需求编号">{{ detailData.req_code }}</el-descriptions-item>
         <el-descriptions-item label="优先级">
@@ -153,26 +153,66 @@
         </el-descriptions-item>
       </el-descriptions>
 
-      <el-divider>车型详情</el-divider>
-      <el-table :data="detailData.vehicle_details || []" border style="width: 100%">
-        <el-table-column prop="vehicle_model_name" label="车型" />
-        <el-table-column prop="feature_support" label="是否支持" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.feature_support ? 'success' : 'info'" size="small">
-              {{ row.feature_support ? '是' : '否' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="function_status" label="功能状态" width="100" />
-        <el-table-column prop="channel_count" label="通道数" width="80" />
-        <el-table-column prop="power_value" label="功率(W)" width="80" />
-      </el-table>
+      <el-divider>车型详情（按差异分组）</el-divider>
+
+      <!-- 不适用车型 -->
+      <div v-if="groupedVehicleDetails.not_applicable.length > 0" class="vehicle-group">
+        <div class="group-header not-applicable">
+          <el-tag type="info" size="large">不适用</el-tag>
+          <span class="group-desc">以下车型不适用该需求</span>
+        </div>
+        <el-table :data="groupedVehicleDetails.not_applicable" border size="small" class="group-table">
+          <el-table-column prop="vehicle_model_name" label="车型" width="150" />
+          <el-table-column label="车型细节" min-width="200">
+            <template #default>
+              <span class="not-applicable-text">不适用</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- 适用车型（按差异分组） -->
+      <div v-for="(group, index) in groupedVehicleDetails.applicable_groups" :key="index" class="vehicle-group">
+        <div class="group-header applicable">
+          <el-tag type="success" size="large">差异组 {{ index + 1 }}</el-tag>
+          <span class="group-desc">{{ group.description }}</span>
+        </div>
+        <el-table :data="group.vehicles" border size="small" class="group-table">
+          <el-table-column prop="vehicle_model_name" label="车型" width="150" />
+          <el-table-column label="功能状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.function_status === '正常' ? 'success' : 'warning'" size="small">
+                {{ row.function_status || '-' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="通道数" width="80">
+            <template #default="{ row }">
+              {{ row.channel_count || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="功率(W)" width="80">
+            <template #default="{ row }">
+              {{ row.power_value || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="备注" min-width="150">
+            <template #default="{ row }">
+              {{ row.remark || '-' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- 无车型详情时显示 -->
+      <el-empty v-if="!detailData.vehicle_details || detailData.vehicle_details.length === 0"
+                description="暂无车型详情" :image-size="100" />
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { requirementApi } from '@/api'
 import { exportToExcel, statusMap, priorityMap } from '@/utils/export'
@@ -199,7 +239,7 @@ const formData = reactive({
   title: '',
   description: '',
   category: '',
-  priority: 'P1',
+  priority: 'A',
   status: 'draft'
 })
 
@@ -207,6 +247,53 @@ const formRules = {
   req_code: [{ required: true, message: '请输入需求编号', trigger: 'blur' }],
   title: [{ required: true, message: '请输入需求标题', trigger: 'blur' }]
 }
+
+// 按差异分组车型详情
+const groupedVehicleDetails = computed(() => {
+  const details = detailData.value.vehicle_details || []
+  const result = {
+    not_applicable: [],
+    applicable_groups: []
+  }
+
+  // 分离不适用和适用车型
+  const applicable = []
+  details.forEach(d => {
+    if (!d.feature_support) {
+      result.not_applicable.push(d)
+    } else {
+      applicable.push(d)
+    }
+  })
+
+  // 按差异分组（功能状态、通道数、功率）
+  const groups = {}
+  applicable.forEach(d => {
+    const key = `${d.function_status || ''}_${d.channel_count || ''}_${d.power_value || ''}`
+    if (!groups[key]) {
+      groups[key] = {
+        function_status: d.function_status,
+        channel_count: d.channel_count,
+        power_value: d.power_value,
+        vehicles: [],
+        description: ''
+      }
+    }
+    groups[key].vehicles.push(d)
+  })
+
+  // 生成分组描述
+  Object.values(groups).forEach(group => {
+    const parts = []
+    if (group.function_status) parts.push(`功能状态: ${group.function_status}`)
+    if (group.channel_count) parts.push(`通道数: ${group.channel_count}`)
+    if (group.power_value) parts.push(`功率: ${group.power_value}W`)
+    group.description = parts.join(' | ') || '无差异信息'
+    result.applicable_groups.push(group)
+  })
+
+  return result
+})
 
 const getPriorityType = (priority) => {
   const map = { S: 'danger', A: 'warning', B: 'success', C: 'info' }
@@ -246,7 +333,7 @@ const handleAdd = () => {
   editingId.value = null
   Object.assign(formData, {
     req_code: '', title: '', description: '',
-    category: '', priority: 'P1', status: 'draft'
+    category: '', priority: 'A', status: 'draft'
   })
   dialogVisible.value = true
 }
@@ -333,5 +420,47 @@ onMounted(() => {
 
 .search-form {
   margin-bottom: 20px;
+}
+
+.vehicle-group {
+  margin-bottom: 20px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.group-header {
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-header.applicable {
+  background-color: #f0f9eb;
+  border-bottom: 1px solid #e1f3d8;
+}
+
+.group-header.not-applicable {
+  background-color: #f4f4f5;
+  border-bottom: 1px solid #e9e9eb;
+}
+
+.group-desc {
+  color: #606266;
+  font-size: 13px;
+}
+
+.group-table {
+  margin: 0;
+}
+
+.group-table :deep(.el-table__header-wrapper) {
+  background-color: #fafafa;
+}
+
+.not-applicable-text {
+  color: #909399;
+  font-style: italic;
 }
 </style>
