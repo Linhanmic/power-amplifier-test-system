@@ -18,7 +18,6 @@ class Requirement(db.Model):
 
     # 关系
     vehicle_details = db.relationship('RequirementVehicleDetail', backref='requirement', lazy='dynamic')
-    test_cases = db.relationship('TestCase', backref='requirement', lazy='dynamic')
 
     def to_dict(self):
         return {

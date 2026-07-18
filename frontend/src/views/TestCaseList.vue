@@ -64,11 +64,13 @@
 
           <el-table :data="tableData" border style="width: 100%">
             <el-table-column prop="case_code" label="测试用例ID" width="120" />
-            <el-table-column prop="requirement_code" label="上游需求ID" width="120">
+            <el-table-column prop="requirements" label="上游需求ID" width="180">
               <template #default="{ row }">
-                <el-button v-if="row.requirement_id" type="primary" link @click="showRequirementDetail(row.requirement_id)">
-                  {{ row.requirement_code }}
-                </el-button>
+                <template v-if="row.requirements && row.requirements.length > 0">
+                  <el-button v-for="req in row.requirements" :key="req.id" type="primary" link size="small" @click="showRequirementDetail(req.id)" style="margin-right: 5px;">
+                    {{ req.req_code }}
+                  </el-button>
+                </template>
                 <span v-else>-</span>
               </template>
             </el-table-column>
@@ -127,7 +129,7 @@
           </el-col>
         </el-row>
         <el-form-item label="上游需求ID">
-          <el-select v-model="formData.requirement_id" placeholder="请选择需求" clearable filterable>
+          <el-select v-model="formData.requirement_ids" placeholder="请选择需求" multiple filterable>
             <el-option v-for="r in requirements" :key="r.id" :label="`${r.req_code} - ${r.title}`" :value="r.id" />
           </el-select>
         </el-form-item>
@@ -209,10 +211,12 @@
         <el-descriptions-item label="测试用例ID">{{ detailData.case_code }}</el-descriptions-item>
         <el-descriptions-item label="所属分组">{{ detailData.group_name }}</el-descriptions-item>
         <el-descriptions-item label="测试用例名称" :span="2">{{ detailData.case_name }}</el-descriptions-item>
-        <el-descriptions-item label="上游需求ID">
-          <el-button v-if="detailData.requirement_id" type="primary" link @click="showRequirementDetail(detailData.requirement_id)">
-            {{ detailData.requirement_code }}
-          </el-button>
+        <el-descriptions-item label="上游需求ID" :span="2">
+          <template v-if="detailData.requirements && detailData.requirements.length > 0">
+            <el-button v-for="req in detailData.requirements" :key="req.id" type="primary" link @click="showRequirementDetail(req.id)" style="margin-right: 10px;">
+              {{ req.req_code }} - {{ req.title }}
+            </el-button>
+          </template>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="优先级">
@@ -440,7 +444,7 @@ const searchParams = reactive({
 const formData = reactive({
   case_code: '',
   group_id: '',
-  requirement_id: '',
+  requirement_ids: [],
   case_name: '',
   test_purpose: '',
   level: 'A',
@@ -572,7 +576,7 @@ const handleAdd = () => {
   dialogTitle.value = '新增测试用例'
   editingId.value = null
   Object.assign(formData, {
-    case_code: '', group_id: searchParams.group_id || '', requirement_id: '',
+    case_code: '', group_id: searchParams.group_id || '', requirement_ids: [],
     case_name: '', test_purpose: '', level: 'A',
     preconditions: '', test_steps: '', expected_results: '',
     tags: '', designer: '', design_date: '', publish_date: '',
@@ -587,7 +591,7 @@ const handleEdit = (row) => {
   Object.assign(formData, {
     case_code: row.case_code,
     group_id: row.group_id,
-    requirement_id: row.requirement_id || '',
+    requirement_ids: row.requirement_ids || [],
     case_name: row.case_name,
     test_purpose: row.test_purpose,
     level: row.level,

@@ -2,7 +2,8 @@ from flask import request
 from flask_restful import Resource
 from . import api
 from ..models import db
-from ..models.test_case import TestCaseGroup, TestCase, TestCaseVehicle
+from ..models.test_case import TestCaseGroup, TestCase, TestCaseVehicle, test_case_requirements
+from ..models.requirement import Requirement
 
 
 class TestCaseGroupListAPI(Resource):
@@ -100,7 +101,7 @@ class TestCaseListAPI(Resource):
             query = query.filter_by(level=level)
         if keyword:
             query = query.filter(
-                TestCase.title.contains(keyword) | TestCase.case_code.contains(keyword)
+                TestCase.case_name.contains(keyword) | TestCase.case_code.contains(keyword)
             )
 
         pagination = query.order_by(TestCase.created_at.desc()).paginate(
@@ -117,7 +118,7 @@ class TestCaseListAPI(Resource):
     def post(self):
         """创建测试用例"""
         data = request.get_json()
-        required_fields = ['case_code', 'group_id', 'title', 'test_steps', 'expected_results']
+        required_fields = ['case_code', 'group_id', 'case_name', 'test_steps', 'expected_results']
         for field in required_fields:
             if not data.get(field):
                 return {'error': f'{field}必填'}, 400
@@ -128,20 +129,29 @@ class TestCaseListAPI(Resource):
         test_case = TestCase(
             case_code=data['case_code'],
             group_id=data['group_id'],
-            title=data['title'],
-            description=data.get('description'),
+            case_name=data['case_name'],
+            test_purpose=data.get('test_purpose'),
             preconditions=data.get('preconditions'),
             test_steps=data['test_steps'],
             expected_results=data['expected_results'],
             level=data.get('level'),
-            requirement_id=data.get('requirement_id'),
-            status=data.get('status', 'draft'),
+            tags=data.get('tags'),
+            designer=data.get('designer'),
+            design_date=data.get('design_date'),
+            publish_date=data.get('publish_date'),
+            status=data.get('status', 'Draft'),
             script_id=data.get('script_id'),
-            can_matrix_id=data.get('can_matrix_id'),
-            created_by=data.get('created_by')
+            can_matrix_id=data.get('can_matrix_id')
         )
         db.session.add(test_case)
         db.session.flush()
+
+        # 添加需求关联（多对多）
+        requirement_ids = data.get('requirement_ids', [])
+        for req_id in requirement_ids:
+            req = Requirement.query.get(req_id)
+            if req:
+                test_case.requirements.append(req)
 
         # 添加车型关联
         vehicles = data.get('vehicles', [])
@@ -175,10 +185,10 @@ class TestCaseAPI(Resource):
             test_case.case_code = data['case_code']
         if data.get('group_id'):
             test_case.group_id = data['group_id']
-        if data.get('title'):
-            test_case.title = data['title']
-        if 'description' in data:
-            test_case.description = data['description']
+        if data.get('case_name'):
+            test_case.case_name = data['case_name']
+        if 'test_purpose' in data:
+            test_case.test_purpose = data['test_purpose']
         if 'preconditions' in data:
             test_case.preconditions = data['preconditions']
         if data.get('test_steps'):
@@ -187,14 +197,28 @@ class TestCaseAPI(Resource):
             test_case.expected_results = data['expected_results']
         if 'level' in data:
             test_case.level = data['level']
-        if 'requirement_id' in data:
-            test_case.requirement_id = data['requirement_id']
+        if 'tags' in data:
+            test_case.tags = data['tags']
+        if 'designer' in data:
+            test_case.designer = data['designer']
+        if 'design_date' in data:
+            test_case.design_date = data['design_date']
+        if 'publish_date' in data:
+            test_case.publish_date = data['publish_date']
         if 'status' in data:
             test_case.status = data['status']
         if 'script_id' in data:
             test_case.script_id = data['script_id']
         if 'can_matrix_id' in data:
             test_case.can_matrix_id = data['can_matrix_id']
+
+        # 更新需求关联（多对多）
+        if 'requirement_ids' in data:
+            test_case.requirements.clear()
+            for req_id in data['requirement_ids']:
+                req = Requirement.query.get(req_id)
+                if req:
+                    test_case.requirements.append(req)
 
         # 更新车型关联
         if 'vehicles' in data:

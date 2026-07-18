@@ -272,28 +272,28 @@ def init_mock_data():
         # 17. 测试用例
         from datetime import date
         test_cases = [
-            TestCase(case_code='TC-PA-001', group_id=sub_groups[0].id, requirement_id=requirements[0].id,
+            TestCase(case_code='TC-PA-001', group_id=sub_groups[0].id,
                     case_name='功放开机功能测试', test_purpose='验证功放能够正常开机',
                     level='S', preconditions='车辆电源OFF',
                     test_steps='1. 打开车辆电源\n2. 等待功放初始化\n3. 检查功放状态',
                     expected_results='功放状态为ON，CAN信号AMP_PowerStatus=1',
                     tags='冒烟,开机', designer='张三', design_date=date(2025, 1, 15), publish_date=date(2025, 2, 1),
                     status='Accepted', script_id=test_scripts[0].id, can_matrix_id=can_matrices[0].id),
-            TestCase(case_code='TC-PA-002', group_id=sub_groups[0].id, requirement_id=requirements[0].id,
+            TestCase(case_code='TC-PA-002', group_id=sub_groups[0].id,
                     case_name='功放关机功能测试', test_purpose='验证功放能够正常关机',
                     level='S', preconditions='车辆电源ON，功放已开机',
                     test_steps='1. 关闭车辆电源\n2. 等待功放关机\n3. 检查功放状态',
                     expected_results='功放状态为OFF，CAN信号AMP_PowerStatus=0',
                     tags='冒烟,关机', designer='张三', design_date=date(2025, 1, 15), publish_date=date(2025, 2, 1),
                     status='Accepted', script_id=test_scripts[0].id, can_matrix_id=can_matrices[0].id),
-            TestCase(case_code='TC-PA-003', group_id=sub_groups[1].id, requirement_id=requirements[0].id,
+            TestCase(case_code='TC-PA-003', group_id=sub_groups[1].id,
                     case_name='音量增加测试', test_purpose='验证音量能够正常增加',
                     level='A', preconditions='功放已开机，音量为0',
                     test_steps='1. 发送音量增加命令\n2. 检查音量变化\n3. 验证CAN信号',
                     expected_results='音量增加，CAN信号AMP_Volume递增',
                     tags='功能,音量', designer='李四', design_date=date(2025, 1, 20), publish_date=date(2025, 2, 5),
                     status='Accepted', script_id=test_scripts[1].id, can_matrix_id=can_matrices[0].id),
-            TestCase(case_code='TC-PA-004', group_id=sub_groups[2].id, requirement_id=requirements[1].id,
+            TestCase(case_code='TC-PA-004', group_id=sub_groups[2].id,
                     case_name='蓝牙连接音频播放测试', test_purpose='验证蓝牙连接后的音频播放功能',
                     level='A', preconditions='手机已蓝牙配对',
                     test_steps='1. 建立蓝牙连接\n2. 播放手机音乐\n3. 检查音频输出',
@@ -302,6 +302,13 @@ def init_mock_data():
                     status='Draft', script_id=test_scripts[2].id, can_matrix_id=can_matrices[1].id),
         ]
         db.session.add_all(test_cases)
+        db.session.flush()
+
+        # 添加需求关联（多对多）
+        test_cases[0].requirements.append(requirements[0])
+        test_cases[1].requirements.append(requirements[0])
+        test_cases[2].requirements.extend([requirements[0], requirements[2]])
+        test_cases[3].requirements.extend([requirements[1], requirements[3]])
         db.session.flush()
         print(f"✓ 创建测试用例: {len(test_cases)}个")
 

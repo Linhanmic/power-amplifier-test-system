@@ -2,6 +2,13 @@ from datetime import datetime
 from . import db
 
 
+# 测试用例与需求的多对多关系表
+test_case_requirements = db.Table('test_case_requirements',
+    db.Column('test_case_id', db.Integer, db.ForeignKey('test_cases.id'), primary_key=True),
+    db.Column('requirement_id', db.Integer, db.ForeignKey('requirements.id'), primary_key=True)
+)
+
+
 class TestCaseGroup(db.Model):
     __tablename__ = 'test_case_groups'
 
@@ -40,7 +47,6 @@ class TestCase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     case_code = db.Column(db.String(50), nullable=False, unique=True, comment='用例编号')
     group_id = db.Column(db.Integer, db.ForeignKey('test_case_groups.id'), nullable=False)
-    requirement_id = db.Column(db.Integer, db.ForeignKey('requirements.id'), comment='上游需求ID')
     case_name = db.Column(db.String(200), nullable=False, comment='测试用例名称')
     test_purpose = db.Column(db.Text, comment='测试目的')
     level = db.Column(db.String(20), comment='优先级')
@@ -57,7 +63,9 @@ class TestCase(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
-    # 关系
+    # 关系 - 多对多需求
+    requirements = db.relationship('Requirement', secondary=test_case_requirements, backref='test_cases')
+    # 关系 - 多对多车型
     vehicles = db.relationship('TestCaseVehicle', backref='test_case', lazy='dynamic')
 
     def to_dict(self):
@@ -66,8 +74,8 @@ class TestCase(db.Model):
             'case_code': self.case_code,
             'group_id': self.group_id,
             'group_name': self.group.name if self.group else None,
-            'requirement_id': self.requirement_id,
-            'requirement_code': self.requirement.req_code if self.requirement else None,
+            'requirements': [{'id': r.id, 'req_code': r.req_code, 'title': r.title} for r in self.requirements],
+            'requirement_ids': [r.id for r in self.requirements],
             'case_name': self.case_name,
             'test_purpose': self.test_purpose,
             'level': self.level,
