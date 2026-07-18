@@ -43,9 +43,7 @@ class RequirementVehicleDetail(db.Model):
     vehicle_model_id = db.Column(db.Integer, db.ForeignKey('vehicle_models.id'), nullable=False)
     feature_support = db.Column(db.Boolean, comment='是否支持')
     function_status = db.Column(db.String(20), comment='功能状态')
-    channel_count = db.Column(db.Integer, comment='通道数量')
-    power_value = db.Column(db.Float, comment='功率值')
-    remark = db.Column(db.Text, comment='备注')
+    difference_description = db.Column(db.Text, comment='差异描述')
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # 关系
@@ -59,8 +57,6 @@ class RequirementVehicleDetail(db.Model):
             'vehicle_model_name': self.vehicle_model.name if self.vehicle_model else None,
             'feature_support': self.feature_support,
             'function_status': self.function_status,
-            'channel_count': self.channel_count,
-            'power_value': self.power_value,
-            'remark': self.remark,
+            'difference_description': self.difference_description,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
