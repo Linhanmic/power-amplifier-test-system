@@ -10,8 +10,6 @@ class TestScript(db.Model):
     script_code = db.Column(db.String(50), nullable=False, unique=True, comment='脚本编号')
     title = db.Column(db.String(200), nullable=False, comment='脚本标题')
     script_path = db.Column(db.String(500), comment='脚本路径')
-    script_type = db.Column(db.String(20), comment='脚本类型')
-    gauge_framework = db.Column(db.Boolean, default=False, comment='是否为Gauge框架')
     tags = db.Column(db.Text, comment='标签(JSON)')
     status = db.Column(db.String(20), default='draft', comment='状态')
     version = db.Column(db.String(20), default='1.0', comment='版本')
@@ -22,7 +20,6 @@ class TestScript(db.Model):
 
     # 关系
     scenarios = db.relationship('TestScenario', backref='script', lazy='dynamic')
-    test_cases = db.relationship('TestCase', backref='script', lazy='dynamic')
 
     @property
     def tags_list(self):
@@ -40,8 +37,6 @@ class TestScript(db.Model):
             'script_code': self.script_code,
             'title': self.title,
             'script_path': self.script_path,
-            'script_type': self.script_type,
-            'gauge_framework': self.gauge_framework,
             'tags': self.tags_list,
             'status': self.status,
             'version': self.version,

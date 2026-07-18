@@ -188,9 +188,11 @@
         <el-form-item label="发布日期">
           <el-date-picker v-model="formData.publish_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" />
         </el-form-item>
-        <el-form-item label="关联脚本">
-          <el-select v-model="formData.script_id" placeholder="请选择脚本" clearable filterable>
-            <el-option v-for="s in scripts" :key="s.id" :label="`${s.script_code} - ${s.title}`" :value="s.id" />
+        <el-form-item label="关联场景">
+          <el-select v-model="formData.scenario_id" placeholder="请选择场景" clearable filterable>
+            <el-option-group v-for="script in scripts" :key="script.id" :label="`${script.script_code} - ${script.title}`">
+              <el-option v-for="s in script.scenarios" :key="s.id" :label="s.scenario_name" :value="s.id" />
+            </el-option-group>
           </el-select>
         </el-form-item>
         <el-form-item label="CAN矩阵">
@@ -237,9 +239,15 @@
         <el-descriptions-item label="设计者">{{ detailData.designer || '-' }}</el-descriptions-item>
         <el-descriptions-item label="编制日期">{{ detailData.design_date || '-' }}</el-descriptions-item>
         <el-descriptions-item label="发布日期">{{ detailData.publish_date || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="关联脚本">
-          <el-button v-if="detailData.script_id" type="primary" link @click="showScriptDetail(detailData.script_id)">
-            {{ detailData.script_code }}
+        <el-descriptions-item label="关联场景">
+          <el-button v-if="detailData.scenario_id" type="primary" link @click="showScenarioDetailById(detailData.scenario_id)">
+            {{ detailData.scenario_name }}
+          </el-button>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="所属脚本">
+          <el-button v-if="detailData.script_code" type="primary" link @click="showScriptDetail(detailData.script_id)">
+            {{ detailData.script_code }} - {{ detailData.script_title }}
           </el-button>
           <span v-else>-</span>
         </el-descriptions-item>
@@ -321,18 +329,12 @@
     </el-dialog>
 
     <!-- 脚本详情弹窗 -->
-    <el-dialog v-model="scriptDetailVisible" title="脚本详情" width="900px">
+    <el-dialog v-model="scriptDetailVisible" title="脚本详情 (Gauge框架)" width="900px">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="脚本编号">{{ scriptDetailData.script_code }}</el-descriptions-item>
-        <el-descriptions-item label="脚本类型">{{ scriptDetailData.script_type }}</el-descriptions-item>
+        <el-descriptions-item label="版本">{{ scriptDetailData.version }}</el-descriptions-item>
         <el-descriptions-item label="脚本标题" :span="2">{{ scriptDetailData.title }}</el-descriptions-item>
         <el-descriptions-item label="脚本路径" :span="2">{{ scriptDetailData.script_path }}</el-descriptions-item>
-        <el-descriptions-item label="Gauge框架">
-          <el-tag :type="scriptDetailData.gauge_framework ? 'success' : 'info'" size="small">
-            {{ scriptDetailData.gauge_framework ? '是' : '否' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="版本">{{ scriptDetailData.version }}</el-descriptions-item>
       </el-descriptions>
 
       <el-divider>测试场景</el-divider>
@@ -413,6 +415,7 @@ const tableData = ref([])
 const groupTree = ref([])
 const requirements = ref([])
 const scripts = ref([])
+const scenarios = ref([])
 const canMatrices = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
@@ -456,7 +459,7 @@ const formData = reactive({
   design_date: '',
   publish_date: '',
   status: 'Draft',
-  script_id: '',
+  scenario_id: '',
   can_matrix_id: ''
 })
 
@@ -530,6 +533,15 @@ const loadScripts = async () => {
   }
 }
 
+const loadScenarios = async () => {
+  try {
+    const res = await testScenarioApi.getList({ per_page: 100 })
+    scenarios.value = res.items
+  } catch (error) {
+    console.error('加载场景失败:', error)
+  }
+}
+
 const loadCanMatrices = async () => {
   try {
     const res = await canMatrixApi.getList({ per_page: 100 })
@@ -580,7 +592,7 @@ const handleAdd = () => {
     case_name: '', test_purpose: '', level: 'A',
     preconditions: '', test_steps: '', expected_results: '',
     tags: '', designer: '', design_date: '', publish_date: '',
-    status: 'Draft', script_id: '', can_matrix_id: ''
+    status: 'Draft', scenario_id: '', can_matrix_id: ''
   })
   dialogVisible.value = true
 }
@@ -603,7 +615,7 @@ const handleEdit = (row) => {
     design_date: row.design_date,
     publish_date: row.publish_date,
     status: row.status,
-    script_id: row.script_id || '',
+    scenario_id: row.scenario_id || '',
     can_matrix_id: row.can_matrix_id || ''
   })
   dialogVisible.value = true
@@ -690,9 +702,9 @@ const showRequirementDetail = async (id) => {
   }
 }
 
-const showScriptDetail = async (id) => {
+const showScriptDetail = async (scriptId) => {
   try {
-    scriptDetailData.value = await testScriptApi.getDetail(id)
+    scriptDetailData.value = await testScriptApi.getDetail(scriptId)
     scriptDetailVisible.value = true
   } catch (error) {
     console.error('获取脚本详情失败:', error)
@@ -702,6 +714,15 @@ const showScriptDetail = async (id) => {
 const showScenarioDetail = async (row) => {
   try {
     scenarioDetailData.value = await testScenarioApi.getDetail(row.id)
+    scenarioDetailVisible.value = true
+  } catch (error) {
+    console.error('获取场景详情失败:', error)
+  }
+}
+
+const showScenarioDetailById = async (id) => {
+  try {
+    scenarioDetailData.value = await testScenarioApi.getDetail(id)
     scenarioDetailVisible.value = true
   } catch (error) {
     console.error('获取场景详情失败:', error)

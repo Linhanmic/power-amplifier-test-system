@@ -11,14 +11,11 @@ class TestScriptListAPI(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         status = request.args.get('status')
-        script_type = request.args.get('script_type')
         keyword = request.args.get('keyword')
 
         query = TestScript.query
         if status:
             query = query.filter_by(status=status)
-        if script_type:
-            query = query.filter_by(script_type=script_type)
         if keyword:
             query = query.filter(
                 TestScript.title.contains(keyword) | TestScript.script_code.contains(keyword)
@@ -50,8 +47,6 @@ class TestScriptListAPI(Resource):
             script_code=data['script_code'],
             title=data['title'],
             script_path=data.get('script_path'),
-            script_type=data.get('script_type'),
-            gauge_framework=data.get('gauge_framework', False),
             tags=data.get('tags'),
             status=data.get('status', 'draft'),
             version=data.get('version', '1.0'),
@@ -83,10 +78,6 @@ class TestScriptAPI(Resource):
             script.title = data['title']
         if 'script_path' in data:
             script.script_path = data['script_path']
-        if 'script_type' in data:
-            script.script_type = data['script_type']
-        if 'gauge_framework' in data:
-            script.gauge_framework = data['gauge_framework']
         if 'tags' in data:
             script.tags = data['tags']
         if 'status' in data:
